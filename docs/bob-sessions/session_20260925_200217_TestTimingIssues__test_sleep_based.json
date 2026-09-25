@@ -1,0 +1,42 @@
+{
+  "session_id": "75fd6142-9a5f-4b9b-8134-c0fe688f190d",
+  "timestamp": "2026-09-25T20:02:17.219713+00:00",
+  "test_name": "TestTimingIssues::test_sleep_based",
+  "file_path": "sample-repo/tests/test_timing.py",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.8,
+    "ordering": 0.0,
+    "state_leakage": 0.45,
+    "environment": 0.0
+  },
+  "reasoning": "High probability of timing flakiness (80%): Line 6: Found sleep pattern: 'time.sleep(0.01)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 6: Found sleep pattern: 'time.sleep(0.01)'",
+      "source": "source_code",
+      "snippet": "time.sleep(0.01)",
+      "line_number": 6
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates timing sensitivity: 'timing'",
+      "source": "test_name",
+      "snippet": "TestTimingIssues::test_sleep_based",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (2/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_sleep_based(self):\n        \"\"\"Test using sleep - unreliable.\"\"\"\n        calc = Calculator()\n        \n        # Flaky: sleep doesn't guarantee exact timing\n        time.sleep(0.01)\n        result = calc.add(2, 2)\n        \n        assert result == 4"
+}

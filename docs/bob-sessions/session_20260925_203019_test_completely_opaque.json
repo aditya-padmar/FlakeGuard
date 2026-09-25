@@ -1,0 +1,20 @@
+{
+  "session_id": "30b04334-2aa3-4105-b8aa-88742b4fda18",
+  "timestamp": "2026-09-25T20:30:19.687162+00:00",
+  "test_name": "test_completely_opaque",
+  "file_path": "does_not_exist.py",
+  "verdict": {
+    "root_cause": "unknown",
+    "confidence": "low",
+    "suggested_fix_area": "Manual triage required - ambiguous failure signals"
+  },
+  "subagent_scores": {
+    "timing": 0.0,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Classified as unknown based on parallel subagent pattern analysis.",
+  "evidence": [],
+  "test_source_snippet": ""
+}

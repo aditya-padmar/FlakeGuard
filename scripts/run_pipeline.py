@@ -96,8 +96,7 @@ async def main():
     # Step 2: Classification with Parallel Subagents (F2)
     print("\n[Step 2/4] Classifying flaky tests with parallel root-cause subagents...")
     agent = BobAgent()
-    classifications = []
-    
+    test_sources = {}
     for test in detection.flaky_tests:
         target_file = _find_test_file(repo_path, test.file_path)
         if target_file and target_file.exists():
@@ -105,12 +104,13 @@ async def main():
             test.file_path = str(target_file)
         else:
             test_source = f"# Source for {test.test_name}"
-        
-        classification = await agent.classify_test(test, test_source)
-        classifications.append(classification)
-        
+        test_sources[test.test_name] = test_source
+
+    classifications = await agent.classify_batch(detection.flaky_tests, test_sources)
+
+    for classification in classifications:
         ev_summary = f"[{len(classification.evidence)} evidence items]" if classification.evidence else ""
-        print(f"  - {test.test_name}")
+        print(f"  - {classification.test_name}")
         print(f"    Root Cause: {classification.root_cause.value.upper()} ({classification.confidence.value} confidence) {ev_summary}")
         print(f"    Reasoning:  {classification.reasoning}")
     
@@ -135,7 +135,10 @@ async def main():
     
     for classification in classifications:
         target_file = _find_test_file(repo_path, classification.file_path)
-        test_source = target_file.read_text(encoding="utf-8") if target_file and target_file.exists() else ""
+        if target_file and target_file.exists():
+            test_source = target_file.read_text(encoding="utf-8")
+        else:
+            test_source = agent.extract_test_source(classification.file_path, classification.test_name)
         fix = await fix_generator.generate_fix(classification, test_source)
         fixes.append(fix)
         

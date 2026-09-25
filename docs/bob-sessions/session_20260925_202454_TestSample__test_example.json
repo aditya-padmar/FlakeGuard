@@ -1,0 +1,56 @@
+{
+  "session_id": "4822a54b-9d05-4de4-b044-4d55ea2a8ae9",
+  "timestamp": "2026-09-25T20:24:54.461505+00:00",
+  "test_name": "TestSample::test_example",
+  "file_path": "sample-repo/tests/test_timing.py",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 1.0,
+    "ordering": 0.35,
+    "state_leakage": 0.85,
+    "environment": 0.0
+  },
+  "reasoning": "High probability of timing flakiness (100%): Line 13: Found time_measurement pattern: 'start = time.time()'; Line 17: Found time_measurement pattern: 'elapsed = time.time() - start'; Line 20: Found timing_assertion pattern: 'assert elapsed < 0.001, f\"Operation took too long: {elapsed}s\"'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 13: Found time_measurement pattern: 'start = time.time()'",
+      "source": "source_code",
+      "snippet": "start = time.time()",
+      "line_number": 13
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 17: Found time_measurement pattern: 'elapsed = time.time() - start'",
+      "source": "source_code",
+      "snippet": "elapsed = time.time() - start",
+      "line_number": 17
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 20: Found timing_assertion pattern: 'assert elapsed < 0.001, f\"Operation took too long: {elapsed}s\"'",
+      "source": "source_code",
+      "snippet": "assert elapsed < 0.001, f\"Operation took too long: {elapsed}s\"",
+      "line_number": 20
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 28: Found sleep pattern: 'time.sleep(0.01)'",
+      "source": "source_code",
+      "snippet": "time.sleep(0.01)",
+      "line_number": 28
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (2/4 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "\"\"\"Tests with timing-related flakiness patterns.\"\"\"\nimport time\nimport pytest\nfrom src.calculator import Calculator\n\n\nclass TestTimingIssues:\n    \"\"\"Tests that exhibit timing-related flakiness.\"\"\"\n    \n    def test_timing_dependent(self):\n        \"\"\"Test that depends on timing - can be flaky.\"\"\"\n        calc = Calculator()\n        start = time.time()\n        \n        # This test can fail if system is slow\n        result = calc.add(5, 3)\n        elapsed = time.time() - start\n        \n        # Fl"
+}
