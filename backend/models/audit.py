@@ -5,6 +5,61 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 
+class QuarantineTestStatus(str, Enum):
+    """
+    Status of a single quarantined test in a cross-reference audit.
+
+    diagnosed_but_still_quarantined
+        F2 found the root cause and F3 can generate a fix, but the test
+        remains in the quarantine list — it should be unblocked.
+
+    unexplained
+        No F2 diagnosis available; manual investigation is still required.
+
+    ready_to_unquarantine
+        Fix has been verified; the quarantine entry can be removed.
+
+    stale
+        Test no longer exists in the codebase; the quarantine entry is stale.
+    """
+    DIAGNOSED_STILL_QUARANTINED = "diagnosed_but_still_quarantined"
+    UNEXPLAINED = "unexplained"
+    READY_TO_UNQUARANTINE = "ready_to_unquarantine"
+    STALE = "stale"
+
+
+class AuditedTest(BaseModel):
+    """Single test entry in a quarantine audit report."""
+    test_name: str
+    diagnosed: bool = Field(..., description="True if F2 has a classification for this test")
+    fixable: bool = Field(..., description="True if a remediable root cause was identified")
+    status: QuarantineTestStatus
+    root_cause: Optional[str] = Field(None, description="F2 root cause string, if diagnosed")
+    confidence: Optional[str] = Field(None, description="F2 confidence level")
+    fix_strategy: Optional[str] = Field(None, description="F3 strategy name, if fixable")
+    quarantine_reason: Optional[str] = Field(None, description="Reason given in QUARANTINE.md")
+    quarantined_at: Optional[datetime] = None
+    source: str = Field("quarantine_file", description="Where this entry came from")
+
+
+class QuarantineAuditReport(BaseModel):
+    """
+    Cross-reference of all quarantined tests against F2 diagnoses.
+
+    This is the primary output of F4.
+    """
+    report_id: str
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    quarantine_file: Optional[str] = None
+    ci_config_files: List[str] = Field(default_factory=list)
+    quarantined_tests: List[AuditedTest]
+    total_quarantined: int
+    diagnosed_count: int
+    fixable_count: int
+    unexplained_count: int
+    summary: Dict[str, Any] = Field(default_factory=dict)
+
+
 class QuarantineStatus(str, Enum):
     """Status of quarantined test."""
     ACTIVE = "active"
