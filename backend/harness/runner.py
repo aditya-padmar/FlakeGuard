@@ -79,22 +79,33 @@ class TestRunner:
     def _parse_pytest_results(self, data: dict) -> List[TestExecution]:
         """Parse pytest JSON report into TestExecution objects."""
         executions = []
+        status_map = {
+            "passed": TestStatus.PASSED,
+            "failed": TestStatus.FAILED,
+            "skipped": TestStatus.SKIPPED,
+            "error": TestStatus.ERROR
+        }
         
         for test in data.get("tests", []):
-            status_map = {
-                "passed": TestStatus.PASSED,
-                "failed": TestStatus.FAILED,
-                "skipped": TestStatus.SKIPPED,
-                "error": TestStatus.ERROR
-            }
+            nodeid = test.get("nodeid", "")
+            loc = test.get("location")
+            if loc and isinstance(loc, (list, tuple)) and len(loc) > 0:
+                file_path = loc[0]
+            else:
+                file_path = nodeid.split("::")[0] if "::" in nodeid else nodeid
+            
+            call_info = test.get("call") or test.get("setup") or test.get("teardown") or {}
+            crash = call_info.get("crash") or {}
+            error_msg = crash.get("message")
+            error_tb = crash.get("traceback")
             
             executions.append(TestExecution(
-                test_name=test["nodeid"],
-                file_path=test["location"][0],
-                status=status_map.get(test["outcome"], TestStatus.ERROR),
+                test_name=nodeid,
+                file_path=file_path,
+                status=status_map.get(test.get("outcome"), TestStatus.ERROR),
                 duration=test.get("duration", 0.0),
-                error_message=test.get("call", {}).get("crash", {}).get("message"),
-                error_traceback=test.get("call", {}).get("crash", {}).get("traceback")
+                error_message=error_msg,
+                error_traceback=error_tb
             ))
         
         return executions

@@ -62,7 +62,7 @@ async def analyze_test_runs(min_runs: int = 3):
     runs = list(runs_db.values())
     analyzer = TestAnalyzer()
     
-    detection = await analyzer.analyze_runs(runs)
+    detection = analyzer.analyze_runs(runs)
     detections_db[detection.detection_id] = detection
     
     return detection

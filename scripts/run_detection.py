@@ -7,7 +7,11 @@ Usage:
 """
 import asyncio
 import argparse
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 from backend.harness.runner import TestRunner
 from backend.harness.executor import TestExecutor
@@ -48,7 +52,7 @@ async def main():
     # Analyze results
     print("Analyzing results for flaky tests...")
     analyzer = TestAnalyzer()
-    detection = await analyzer.analyze_runs(runs)
+    detection = analyzer.analyze_runs(runs)
     
     # Print results
     print("-" * 50)
