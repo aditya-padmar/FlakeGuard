@@ -105,7 +105,7 @@ export default function TestInventory({ tests, onSelectTest }: TestInventoryProp
       
       <div className="inventory-summary">
         <span>Total: {tests.length} flaky tests</span>
-        <span>Avg Flake Rate: {(tests.reduce((sum, t) => sum + t.flake_rate, 0) / tests.length * 100).toFixed(1)}%</span>
+        <span>Avg Flake Rate: {tests.length > 0 ? (tests.reduce((sum, t) => sum + t.flake_rate, 0) / tests.length * 100).toFixed(1) : '0.0'}%</span>
       </div>
     </div>
   );
