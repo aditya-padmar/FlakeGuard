@@ -6,26 +6,26 @@ interface FixViewerProps {
   onReject: () => void;
 }
 
+const getEffortColor = (effort: string) => {
+  switch (effort) {
+    case 'low': return 'var(--color-success)';
+    case 'medium': return 'var(--color-warning)';
+    case 'high': return 'var(--color-error)';
+    default: return 'var(--color-text)';
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'proposed': return 'var(--color-info)';
+    case 'applied': return 'var(--color-warning)';
+    case 'verified': return 'var(--color-success)';
+    case 'rejected': return 'var(--color-error)';
+    default: return 'var(--color-text)';
+  }
+};
+
 export default function FixViewer({ fix, onApply, onReject }: FixViewerProps) {
-  const getEffortColor = (effort: string) => {
-    switch (effort) {
-      case 'low': return 'var(--color-success)';
-      case 'medium': return 'var(--color-warning)';
-      case 'high': return 'var(--color-error)';
-      default: return 'var(--color-text)';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'proposed': return 'var(--color-info)';
-      case 'applied': return 'var(--color-warning)';
-      case 'verified': return 'var(--color-success)';
-      case 'rejected': return 'var(--color-error)';
-      default: return 'var(--color-text)';
-    }
-  };
-
   return (
     <div className="fix-viewer">
       <div className="fix-header">

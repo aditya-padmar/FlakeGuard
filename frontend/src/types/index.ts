@@ -12,7 +12,8 @@ export interface FlakyTest {
 }
 
 export interface RootCause {
-  type: string;
+  type?: string;
+  cause: string;
   count: number;
   percentage: number;
 }
