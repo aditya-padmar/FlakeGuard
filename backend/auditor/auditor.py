@@ -1,5 +1,5 @@
 """
-Main auditor module.
+Main auditor module for F4 - Quarantine / CI Audit.
 
 Responsibilities
 ----------------
@@ -7,8 +7,10 @@ Responsibilities
 2. Manage the live quarantine list (add / update / remove entries).
 3. Generate QuarantineReports from the live list.
 4. **audit_quarantine()** — F4's key function:
-   cross-reference a QUARANTINE.md (or any quarantine file) against
-   F2 Classification objects and produce a QuarantineAuditReport.
+   cross-reference QUARANTINE.md, skip/xfail markers, retry config against
+   F2 Classification objects and F3 remediation results to produce comprehensive
+   audit reports.
+5. Integrate skip_detector and retry_detector for comprehensive CI audit.
 """
 from __future__ import annotations
 
@@ -16,7 +18,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from backend.models.audit import (
     AuditAction,
@@ -32,6 +34,8 @@ from backend.models.classification import Classification, Confidence, RootCauseT
 from backend.config import settings
 from backend.auditor.quarantine_parser import QuarantineParser
 from backend.auditor.ci_parser import CIParser
+from backend.auditor.skip_detector import SkipDetector
+from backend.auditor.retry_detector import RetryDetector
 from backend.remediation.templates import REMEDIATION_STRATEGIES
 
 
