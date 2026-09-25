@@ -7,8 +7,8 @@ export interface FlakyTest {
   fail_count: number;
   recent_failures: string[];
   status_history: string[];
-  first_seen: string;
-  last_seen: string;
+  first_seen?: string;
+  last_seen?: string;
 }
 
 export interface RootCause {
