@@ -2,8 +2,10 @@
 from fastapi import APIRouter
 from typing import Dict, List
 from datetime import datetime, timedelta
-import json
-from pathlib import Path
+from collections import Counter
+
+from backend.api.routes.classification import classifications_db
+from backend.models.classification import Confidence
 
 router = APIRouter()
 
@@ -11,39 +13,47 @@ router = APIRouter()
 @router.get("/summary")
 async def get_metrics_summary():
     """
-    Get overall metrics summary.
-    
-    Returns key statistics about flaky tests and remediation.
+    Get overall metrics summary derived from live classification data.
     """
+    classifications = list(classifications_db.values())
+    total = len(classifications)
+
+    if total == 0:
+        most_common = "none"
+    else:
+        cause_counts = Counter(c.root_cause.value for c in classifications)
+        most_common = cause_counts.most_common(1)[0][0]
+
+    high_conf = sum(1 for c in classifications if c.confidence == Confidence.HIGH)
+
     return {
-        "total_flaky_tests": 15,
-        "tests_quarantined": 8,
-        "tests_fixed": 12,
-        "pending_classification": 3,
-        "average_time_to_fix": "2.5 days",
-        "flake_rate": "3.2%",
-        "most_common_root_cause": "timing",
-        "resolution_rate": "85%"
+        "total_classified": total,
+        "high_confidence_classifications": high_conf,
+        "most_common_root_cause": most_common,
+        "pending_classification": 0
     }
 
 
 @router.get("/root-causes")
 async def get_root_cause_breakdown():
     """
-    Get breakdown of flaky tests by root cause.
-    
-    Returns counts and percentages for each category.
+    Get breakdown of classified tests by root cause (live data).
     """
-    return {
-        "breakdown": [
-            {"cause": "timing", "count": 45, "percentage": 35},
-            {"cause": "state_leakage", "count": 32, "percentage": 25},
-            {"cause": "ordering", "count": 28, "percentage": 22},
-            {"cause": "environment", "count": 15, "percentage": 12},
-            {"cause": "unknown", "count": 8, "percentage": 6}
-        ],
-        "total": 128
-    }
+    classifications = list(classifications_db.values())
+    total = len(classifications)
+
+    cause_counts = Counter(c.root_cause.value for c in classifications)
+
+    breakdown = [
+        {
+            "cause": cause,
+            "count": count,
+            "percentage": round(count / total * 100) if total else 0
+        }
+        for cause, count in cause_counts.most_common()
+    ]
+
+    return {"breakdown": breakdown, "total": total}
 
 
 @router.get("/trends")

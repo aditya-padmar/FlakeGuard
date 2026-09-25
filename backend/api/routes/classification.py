@@ -1,7 +1,6 @@
 """Classification API routes."""
 from fastapi import APIRouter, HTTPException
 from typing import List
-import uuid
 
 from backend.models.classification import Classification, RootCauseType
 from backend.bob.agent import BobAgent
@@ -12,24 +11,39 @@ router = APIRouter()
 # In-memory storage (replace with database in production)
 classifications_db = {}
 
+# Singleton agent — created once, reused across all requests
+_bob_agent = BobAgent()
+
 
 @router.post("/classify", response_model=Classification)
 async def classify_test(test: FlakyTest):
     """
     Classify a flaky test to determine root cause.
-    
+
     Returns classification with evidence and suggested fixes.
     """
-    agent = BobAgent()
-    
-    # In production, fetch test source from repository
-    test_source = "# Test source would be fetched here"
-    
-    classification = await agent.classify_test(test, test_source)
-    
+    classification = await _bob_agent.classify_test(test)
     classifications_db[classification.classification_id] = classification
-    
     return classification
+
+
+@router.post("/classify-batch", response_model=List[Classification])
+async def classify_batch(tests: List[FlakyTest]):
+    """
+    Classify multiple flaky tests in parallel.
+
+    All tests are dispatched to Bob's subagents simultaneously.
+    """
+    results = await _bob_agent.classify_batch(tests)
+    for c in results:
+        classifications_db[c.classification_id] = c
+    return results
+
+
+@router.get("/bob/status")
+async def get_bob_status():
+    """Return Bob agent status: architecture, subagents, and LLM config."""
+    return _bob_agent.get_status()
 
 
 @router.get("/classifications", response_model=List[Classification])

@@ -1,26 +1,36 @@
 """Leakage subagent for detecting state leakage between tests."""
 import re
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from backend.models.classification import Evidence, RootCauseType
 
 
 class LeakageSubagent:
     """Analyzes tests for state leakage issues."""
-    
+
     PATTERNS = {
-        "global_variable": r"^[A-Z_]+\s*=|global\s+\w+",
-        "shared_instance": r"get_shared_|shared_instance|_instance\s*=",
-        "missing_teardown": r"def setup|@pytest\.fixture(?!.*yield)",
-        "mutable_default": r"def\s+\w+\([^)]*=\s*\[\]|def\s+\w+\([^)]*=\s*\{"
+        "shared_instance": r"get_shared_|shared_instance|_instance\s*=|singleton",
+        "global_mutation": r"global\s+\w+|^[A-Z_]{3,}\s*=",
+        "state_mutation": r"calc\.add|calc\.clear|calc\.subtract|\.append\(|\.pop\(|\.update\(",
+        "missing_teardown": r"def setup|@pytest\.fixture(?!.*yield)"
     }
-    
+
+    def __init__(self):
+        self.prompt_template = self._load_prompt()
+
+    def _load_prompt(self) -> str:
+        prompt_file = Path(__file__).parent.parent / "prompts" / "leakage.txt"
+        if prompt_file.exists():
+            return prompt_file.read_text(encoding="utf-8")
+        return "Specialized AI subagent for state and fixture leakage."
+
     async def analyze(
         self,
         test_name: str,
         test_source: str,
         error_messages: List[str],
         status_history: List[str],
-        llm_client: Any,
+        llm_client: Any = None,
         context: Optional[dict] = None
     ) -> Dict[str, Any]:
         """
@@ -29,61 +39,124 @@ class LeakageSubagent:
         Checks for:
         - Shared mutable state
         - Missing teardown/cleanup
-        - Global variables
-        - Singleton patterns
+        - Global variables and singleton mutations
         """
-        evidence = []
+        evidence: List[Evidence] = []
         score = 0.0
-        
-        # Pattern-based analysis
-        for pattern_name, pattern in self.PATTERNS.items():
-            matches = re.findall(pattern, test_source, re.MULTILINE)
-            if matches:
+
+        # Line-by-line pattern matching
+        lines = test_source.splitlines()
+        for idx, line in enumerate(lines, start=1):
+            for pattern_name, pattern in self.PATTERNS.items():
+                if re.search(pattern, line, re.IGNORECASE):
+                    evidence.append(Evidence(
+                        type="code_pattern",
+                        description=f"Line {idx}: Found {pattern_name} pattern: '{line.strip()}'",
+                        source="source_code",
+                        snippet=line.strip(),
+                        line_number=idx
+                    ))
+                    if pattern_name in ("shared_instance", "global_mutation"):
+                        score += 0.3
+                    else:
+                        score += 0.2
+
+        # Check for test name indicating state leakage
+        leakage_indicators = ["leak", "leaky", "mutation", "mutate", "dirty", "uncleaned", "shared_state", "global"]
+        for kw in leakage_indicators:
+            if kw in test_name.lower():
                 evidence.append(Evidence(
-                    type="code_pattern",
-                    description=f"Found {len(matches)} instances of {pattern_name} pattern",
-                    source="source_code",
-                    snippet=matches[0] if matches else None
+                    type="naming_convention",
+                    description=f"Test name indicates mutable state leakage: '{kw}'",
+                    source="test_name",
+                    snippet=test_name
                 ))
-                score += 0.3
-        
-        # Check for cleanup patterns
-        if "yield" not in test_source and "teardown" not in test_source.lower():
-            if "setup" in test_source.lower() or "fixture" in test_source.lower():
+                score += 0.35
+                break
+
+        # Check for lack of teardown in test source
+        if "yield" not in test_source and "teardown" not in test_source.lower() and "clear" not in test_source.lower():
+            if "setup" in test_source.lower() or "fixture" in test_source.lower() or "calc.add" in test_source:
                 evidence.append(Evidence(
                     type="missing_pattern",
-                    description="Setup found without corresponding teardown",
+                    description="State mutation found without teardown/cleanup context",
                     source="source_code"
                 ))
                 score += 0.25
-        
+
         # Check error messages for state leakage indicators
-        leakage_keywords = ["already", "stale", "previous", "unexpected value", "different"]
+        leakage_keywords = ["already", "stale", "previous", "unexpected value", "state left dirty"]
         for msg in error_messages:
             for keyword in leakage_keywords:
-                if keyword.lower() in msg.lower():
+                if keyword in msg.lower():
                     evidence.append(Evidence(
                         type="error_pattern",
-                        description=f"Error suggests state leakage: {keyword}",
+                        description=f"Error suggests residual state: '{keyword}'",
                         source="error_message",
-                        snippet=msg[:100]
+                        snippet=msg[:120]
                     ))
-                    score += 0.15
-        
-        # Cap score at 1.0
+                    score += 0.2
+                    break
+
+        # If LLM client is available, attempt enhanced agent evaluation
+        llm_reasoning = None
+        if llm_client:
+            try:
+                llm_reasoning = await self._run_llm_analysis(
+                    llm_client=llm_client,
+                    test_name=test_name,
+                    test_source=test_source,
+                    error_messages=error_messages,
+                    status_history=status_history
+                )
+            except Exception:
+                pass
+
         score = min(score, 1.0)
-        
+        reasoning = llm_reasoning or self._generate_reasoning(evidence, score)
+
         return {
             "score": score,
             "evidence": evidence,
-            "reasoning": self._generate_reasoning(evidence, score),
+            "reasoning": reasoning,
             "root_cause": RootCauseType.STATE_LEAKAGE
         }
-    
+
+    async def _run_llm_analysis(
+        self,
+        llm_client: Any,
+        test_name: str,
+        test_source: str,
+        error_messages: List[str],
+        status_history: List[str]
+    ) -> Optional[str]:
+        """Invoke LLM client with the specialized prompt."""
+        system_msg = self.prompt_template
+        user_msg = (
+            f"Analyze test '{test_name}' for state leakage / uncleaned fixtures.\n\n"
+            f"Source:\n{test_source}\n\n"
+            f"Errors: {error_messages}\n"
+            f"History: {status_history}\n\n"
+            "Explain if this test leaks state or is polluted by shared fixtures."
+        )
+        if hasattr(llm_client, "chat") and hasattr(llm_client.chat, "completions"):
+            response = llm_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg}
+                ],
+                max_tokens=250
+            )
+            return response.choices[0].message.content
+        return None
+
     def _generate_reasoning(self, evidence: List[Evidence], score: float) -> str:
         """Generate human-readable reasoning."""
         if score < 0.3:
-            return "No strong evidence of state leakage found."
-        
-        reasons = [e.description for e in evidence]
-        return f"State leakage detected: {'; '.join(reasons[:3])}."
+            return "No strong evidence of state or fixture leakage detected."
+
+        snippets = [e.description for e in evidence if e.type == "code_pattern"]
+        if snippets:
+            return f"State leakage detected ({score:.0%}): {'; '.join(snippets[:3])}."
+        return f"State leakage identified from shared mutable state and missing cleanup ({score:.0%})."

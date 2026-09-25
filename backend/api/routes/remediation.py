@@ -8,6 +8,7 @@ from backend.models.remediation import Fix, FixSuggestion, FixStatus
 from backend.models.classification import Classification, RootCauseType, Evidence, Confidence
 from backend.remediation.generator import FixGenerator
 from backend.remediation.validator import FixValidator, ValidationResult
+from backend.bob.agent import BobAgent
 
 router = APIRouter()
 
@@ -15,6 +16,8 @@ router = APIRouter()
 fixes_db: dict = {}
 # Store patched sources keyed by (fix_id, suggestion_id) for validation
 _patched_sources: dict = {}
+
+_bob_agent = BobAgent()
 
 
 # ── F2 input schema ───────────────────────────────────────────────────────────
@@ -117,8 +120,12 @@ async def generate_fix(classification: Classification):
     """
     generator = FixGenerator()
 
-    # Pass empty string — generator will read from disk when file_path exists
-    fix = await generator.generate_fix(classification, test_source="")
+    # Extract real source code using Bob's AST extractor
+    test_source = _bob_agent.extract_test_source(
+        classification.file_path, classification.test_name
+    )
+
+    fix = await generator.generate_fix(classification, test_source=test_source)
     fixes_db[fix.fix_id] = fix
     _store_patched_sources(fix)
 
@@ -145,9 +152,15 @@ async def generate_fix_from_f2(f2_input: F2ClassificationInput):
     """
     classification = _f2_to_classification(f2_input)
     generator = FixGenerator()
-    fix = await generator.generate_fix(classification, test_source="")
+
+    test_source = _bob_agent.extract_test_source(
+        classification.file_path, classification.test_name
+    )
+
+    fix = await generator.generate_fix(classification, test_source=test_source)
     fixes_db[fix.fix_id] = fix
     _store_patched_sources(fix)
+
     return fix
 
 
