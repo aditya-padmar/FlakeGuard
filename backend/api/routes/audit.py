@@ -1,17 +1,48 @@
 """Audit API routes."""
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
+from pydantic import BaseModel, Field
 import uuid
 
 from backend.models.audit import (
-    AuditLog, AuditAction, QuarantineEntry, QuarantineStatus, QuarantineReport
+    AuditLog,
+    AuditAction,
+    QuarantineEntry,
+    QuarantineStatus,
+    QuarantineReport,
+    QuarantineAuditReport,
 )
+from backend.models.classification import Classification
 from backend.auditor.auditor import Auditor
 from backend.auditor.quarantine_parser import QuarantineParser
+from backend.auditor.ci_parser import CIParser
 
 router = APIRouter()
 
 auditor = Auditor()
+
+
+# ── F2 × F4 cross-reference request schema ────────────────────────────────────
+
+class QuarantineAuditRequest(BaseModel):
+    """
+    Request body for POST /audit/quarantine-audit.
+
+    Combines the quarantine file path with a list of F2 classifications
+    so the auditor can produce a full cross-reference report.
+    """
+    quarantine_path: str = Field(
+        "sample-repo/QUARANTINE.md",
+        description="Path to QUARANTINE.md or plain skip-list file.",
+    )
+    classifications: List[Classification] = Field(
+        default_factory=list,
+        description="F2 Classification objects to match against the quarantine list.",
+    )
+    repo_path: Optional[str] = Field(
+        None,
+        description="Repository root path, used to discover CI config files.",
+    )
 
 
 @router.get("/logs", response_model=List[AuditLog])
@@ -141,3 +172,100 @@ async def import_quarantine_file(file_path: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── F4: quarantine × F2 cross-reference ──────────────────────────────────────
+
+@router.post("/quarantine-audit", response_model=QuarantineAuditReport)
+async def quarantine_audit(request: QuarantineAuditRequest):
+    """
+    **F4 core endpoint** — cross-reference a quarantine file with F2 diagnoses.
+
+    Reads the quarantine file at *quarantine_path*, matches every entry against
+    the provided *classifications* (F2 output), and returns a
+    QuarantineAuditReport that shows:
+
+    - Which quarantined tests have been diagnosed (``diagnosed: true``)
+    - Which have a fixable root cause (``fixable: true``)
+    - Which remain unexplained (``status: unexplained``)
+
+    Example request body::
+
+        {
+          "quarantine_path": "sample-repo/QUARANTINE.md",
+          "classifications": [
+            {
+              "classification_id": "...",
+              "test_name": "test_timing_dependent",
+              "file_path": "sample-repo/tests/test_timing.py",
+              "root_cause": "timing",
+              "confidence": "high",
+              "reasoning": "...",
+              "suggested_fix_area": "..."
+            }
+          ],
+          "repo_path": "sample-repo"
+        }
+    """
+    try:
+        report = auditor.audit_quarantine(
+            quarantine_path=request.quarantine_path,
+            classifications=request.classifications,
+            repo_path=request.repo_path,
+        )
+        return report
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/quarantine-audit/sample", response_model=QuarantineAuditReport)
+async def quarantine_audit_sample(
+    quarantine_path: str = "sample-repo/QUARANTINE.md",
+    repo_path: str = "sample-repo",
+):
+    """
+    Run F4 audit against the sample repository with zero F2 input.
+
+    Useful for verifying the pipeline end-to-end when F2 has not yet
+    been run — all quarantined tests will appear as ``unexplained``.
+    """
+    report = auditor.audit_quarantine(
+        quarantine_path=quarantine_path,
+        classifications=[],
+        repo_path=repo_path,
+    )
+    return report
+
+
+@router.get("/ci-config")
+async def get_ci_config(repo_path: str = "sample-repo"):
+    """
+    Parse and return CI configuration signals from *repo_path*.
+
+    Reads pytest.ini and any .github/workflows/*.yml files and extracts
+    markers, addopts flags, skip signals, and environment variables.
+    """
+    parser = CIParser()
+    pytest_cfg, workflow_cfg = parser.parse_all(repo_path)
+    return {
+        "pytest_ini": {
+            "markers": pytest_cfg.markers,
+            "addopts": pytest_cfg.addopts,
+            "testpaths": pytest_cfg.testpaths,
+            "skip_markers": pytest_cfg.skip_markers,
+            "deselected": pytest_cfg.deselected,
+            "k_expression": pytest_cfg.k_expression,
+            "m_expression": pytest_cfg.m_expression,
+            "extra": pytest_cfg.extra,
+        },
+        "workflow": {
+            "platform": workflow_cfg.platform,
+            "python_versions": workflow_cfg.python_versions,
+            "pytest_commands": workflow_cfg.pytest_commands,
+            "ci_flag": workflow_cfg.ci_flag,
+            "skip_signals": workflow_cfg.skip_signals,
+            "env_vars": workflow_cfg.env_vars,
+        },
+    }
