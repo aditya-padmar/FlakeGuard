@@ -36,10 +36,14 @@ class TestExecutor:
         for i in range(num_runs):
             print(f"Running test iteration {i + 1}/{num_runs}")
             
+            # Randomize order across runs to expose order/state dependencies (FR1)
+            pytest_args = ["--random-order"] if i > 0 else []
+            
             # Run in thread to avoid blocking
             run = await asyncio.to_thread(
                 self.runner.run_tests,
-                test_pattern=test_pattern
+                test_pattern=test_pattern,
+                pytest_args=pytest_args
             )
             runs.append(run)
             
