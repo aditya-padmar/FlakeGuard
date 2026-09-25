@@ -68,18 +68,12 @@ async def main():
         return
     
     # Step 2: Classification
-    print("\n[Step 2/4] Classifying flaky tests...")
+    print("\n[Step 2/4] Classifying flaky tests in parallel with BobAgent...")
     agent = BobAgent()
-    classifications = []
-    
-    for test in detection.flaky_tests:
-        # In production, fetch actual test source
-        test_source = f"# Source for {test.test_name}"
-        
-        classification = await agent.classify_test(test, test_source)
-        classifications.append(classification)
-        
-        print(f"  - {test.test_name}: {classification.root_cause.value} ({classification.confidence.value} confidence)")
+    classifications = await agent.classify_batch(detection.flaky_tests)
+
+    for c in classifications:
+        print(f"  - {c.test_name}: {c.root_cause.value} ({c.confidence.value} confidence)")
     
     results["classifications"] = [
         {
@@ -97,7 +91,7 @@ async def main():
     fixes = []
     
     for classification in classifications:
-        test_source = f"# Source for {classification.test_name}"
+        test_source = agent.extract_test_source(classification.file_path, classification.test_name)
         fix = await fix_generator.generate_fix(classification, test_source)
         fixes.append(fix)
         
