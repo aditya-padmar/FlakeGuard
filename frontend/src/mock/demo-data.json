@@ -1,0 +1,120 @@
+{
+  "flakyTests": [
+    {
+      "test_name": "test_timing_dependent",
+      "file_path": "tests/test_timing.py",
+      "flake_rate": 0.35,
+      "total_runs": 20,
+      "pass_count": 13,
+      "fail_count": 7,
+      "recent_failures": [
+        "AssertionError: Operation took too long: 0.002s",
+        "AssertionError: Operation took too long: 0.003s"
+      ],
+      "status_history": ["passed", "failed", "passed", "passed", "failed"]
+    },
+    {
+      "test_name": "test_shared_state",
+      "file_path": "tests/test_order.py",
+      "flake_rate": 0.25,
+      "total_runs": 20,
+      "pass_count": 15,
+      "fail_count": 5,
+      "recent_failures": [
+        "AssertionError: operation_count != 0"
+      ],
+      "status_history": ["passed", "passed", "failed", "passed", "passed"]
+    },
+    {
+      "test_name": "test_leaky_setup",
+      "file_path": "tests/test_leakage.py",
+      "flake_rate": 0.40,
+      "total_runs": 20,
+      "pass_count": 12,
+      "fail_count": 8,
+      "recent_failures": [
+        "AssertionError: last_result is not None"
+      ],
+      "status_history": ["failed", "passed", "failed", "passed", "failed"]
+    },
+    {
+      "test_name": "test_random_failure",
+      "file_path": "tests/test_network.py",
+      "flake_rate": 0.30,
+      "total_runs": 20,
+      "pass_count": 14,
+      "fail_count": 6,
+      "recent_failures": [
+        "Failed: Random failure for flaky test demonstration"
+      ],
+      "status_history": ["passed", "passed", "passed", "failed", "passed"]
+    }
+  ],
+  "rootCauses": [
+    {"cause": "timing", "count": 45, "percentage": 35},
+    {"cause": "state_leakage", "count": 32, "percentage": 25},
+    {"cause": "ordering", "count": 28, "percentage": 22},
+    {"cause": "environment", "count": 15, "percentage": 12},
+    {"cause": "unknown", "count": 8, "percentage": 6}
+  ],
+  "quarantine": [
+    {
+      "quarantine_id": "q-001",
+      "test_name": "test_timing_dependent",
+      "file_path": "tests/test_timing.py",
+      "reason": "Timing-related flakiness",
+      "status": "active",
+      "quarantined_at": "2024-01-15T10:00:00Z",
+      "runs_since_quarantine": 5,
+      "runs_until_review": 10
+    },
+    {
+      "quarantine_id": "q-002",
+      "test_name": "test_shared_state",
+      "file_path": "tests/test_order.py",
+      "reason": "Order dependency detected",
+      "status": "active",
+      "quarantined_at": "2024-01-20T10:00:00Z",
+      "runs_since_quarantine": 3,
+      "runs_until_review": 10
+    }
+  ],
+  "fixes": [
+    {
+      "fix_id": "fix-001",
+      "test_name": "test_timing_dependent",
+      "file_path": "tests/test_timing.py",
+      "status": "proposed",
+      "suggestions": [
+        {
+          "suggestion_id": "sugg-001",
+          "fix_type": "timeout_adjustment",
+          "description": "Relax timing assertion from 0.001s to 0.1s",
+          "rationale": "Current threshold is too strict for CI environments",
+          "confidence": 0.85,
+          "estimated_effort": "low"
+        },
+        {
+          "suggestion_id": "sugg-002",
+          "fix_type": "code_change",
+          "description": "Remove timing assertion entirely",
+          "rationale": "Timing tests are inherently flaky",
+          "confidence": 0.75,
+          "estimated_effort": "low"
+        }
+      ],
+      "primary_suggestion_id": "sugg-001",
+      "verified_runs": 0
+    }
+  ],
+  "metrics": {
+    "total_flaky_tests": 15,
+    "tests_quarantined": 8,
+    "tests_fixed": 12,
+    "pending_classification": 3,
+    "average_time_to_fix": "2.5 days",
+    "flake_rate": "3.2%",
+    "most_common_root_cause": "timing",
+    "resolution_rate": "85%"
+  }
+}
