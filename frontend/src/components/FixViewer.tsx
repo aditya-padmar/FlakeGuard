@@ -6,16 +6,16 @@ interface FixViewerProps {
   onReject: () => void;
 }
 
-export default function FixViewer({ fix, onApply, onReject }: FixViewerProps) {
-  const getEffortColor = (effort: string) => {
-    switch (effort) {
-      case 'low': return 'var(--color-success)';
-      case 'medium': return 'var(--color-warning)';
-      case 'high': return 'var(--color-error)';
-      default: return 'var(--color-text)';
-    }
-  };
+function getEffortColor(effort: string): string {
+  switch (effort) {
+    case 'low': return 'var(--color-success)';
+    case 'medium': return 'var(--color-warning)';
+    case 'high': return 'var(--color-error)';
+    default: return 'var(--color-text)';
+  }
+}
 
+export default function FixViewer({ fix, onApply, onReject }: FixViewerProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'proposed': return 'var(--color-info)';
