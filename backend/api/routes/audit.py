@@ -1,6 +1,6 @@
 """Audit API routes."""
 from fastapi import APIRouter, HTTPException
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 import uuid
 
@@ -16,6 +16,8 @@ from backend.models.classification import Classification
 from backend.auditor.auditor import Auditor
 from backend.auditor.quarantine_parser import QuarantineParser
 from backend.auditor.ci_parser import CIParser
+from backend.auditor.skip_detector import SkipDetector
+from backend.auditor.retry_detector import RetryDetector
 
 router = APIRouter()
 
@@ -268,4 +270,129 @@ async def get_ci_config(repo_path: str = "sample-repo"):
             "skip_signals": workflow_cfg.skip_signals,
             "env_vars": workflow_cfg.env_vars,
         },
+    }
+
+
+# ── F4: Skip / Retry / Comprehensive Detection ────────────────────────────────
+
+@router.get("/skip-detections")
+async def detect_skips(repo_path: str = "sample-repo"):
+    """
+    **F4** — Detect skip and xfail markers in test files.
+
+    Scans every ``test_*.py`` file under ``<repo_path>/tests/`` and returns
+    every ``@pytest.mark.skip``, ``@pytest.mark.xfail``, and ``pytest.skip()``
+    it finds, together with a summary.
+    """
+    detector = SkipDetector(repo_root=repo_path)
+    detections = detector.detect_in_directory("tests")
+    summary = detector.summarize(detections)
+    return {
+        "repo_path": repo_path,
+        "detections": detections,
+        "summary": summary,
+    }
+
+
+@router.get("/retry-detections")
+async def detect_retries(repo_path: str = "sample-repo"):
+    """
+    **F4** — Detect CI retry configuration.
+
+    Checks GitHub Actions workflow files and pytest config for retry
+    mechanisms (nick-invision/retry, wretry, --reruns, etc.).
+    """
+    detector = RetryDetector(repo_root=repo_path)
+    result = detector.detect_all()
+    return result
+
+
+@router.post("/run")
+async def run_audit(
+    quarantine_path: str = "sample-repo/QUARANTINE.md",
+    repo_path: str = "sample-repo",
+    classifications: List[Classification] = None,
+    remediations: Optional[List[Dict[str, Any]]] = None,
+):
+    """
+    **F4 core** — Run a full audit of the repository.
+
+    Combines:
+    1. Quarantine × F2 cross-reference (``audit_quarantine``)
+    2. Skip/xfail detection
+    3. CI retry detection
+
+    ``classifications`` (optional) — F2 Classification objects to match.
+    ``remediations``  (optional) — F3 remediation results for context (stored
+    in the report summary but not used for logic in the MVP).
+
+    Returns a QuarantineAuditReport enriched with skip/retry data.
+    """
+    try:
+        report = auditor.audit_quarantine(
+            quarantine_path=quarantine_path,
+            classifications=classifications or [],
+            repo_path=repo_path,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Enrich summary with skip/retry data
+    skip_detector = SkipDetector(repo_root=repo_path)
+    skip_detections = skip_detector.detect_in_directory("tests")
+    skip_summary = skip_detector.summarize(skip_detections)
+
+    retry_detector = RetryDetector(repo_root=repo_path)
+    retry_result = retry_detector.detect_all()
+
+    report.summary["skip_detections"] = skip_summary
+    report.summary["retry_configuration"] = retry_result.get("summary", {})
+    if remediations:
+        report.summary["remediations_provided"] = len(remediations)
+
+    return report
+
+
+@router.get("/report")
+async def get_audit_report(
+    quarantine_path: str = "sample-repo/QUARANTINE.md",
+    repo_path: str = "sample-repo",
+):
+    """
+    **F4** — Get a comprehensive audit report for the sample repository.
+
+    Combines the live quarantine list with skip/retry detection.
+    No F2 classifications are required — all tests appear as *unexplained*
+    unless the quarantine file has been cross-referenced separately.
+
+    Use ``POST /api/audit/run`` when you have F2 classifications to provide.
+    """
+    try:
+        report = auditor.audit_quarantine(
+            quarantine_path=quarantine_path,
+            classifications=[],
+            repo_path=repo_path,
+        )
+    except FileNotFoundError:
+        report = None
+
+    quarantine_report = auditor.generate_report()
+
+    skip_detector = SkipDetector(repo_root=repo_path)
+    skip_detections = skip_detector.detect_in_directory("tests")
+    skip_summary = skip_detector.summarize(skip_detections)
+
+    retry_detector = RetryDetector(repo_root=repo_path)
+    retry_result = retry_detector.detect_all()
+
+    return {
+        "quarantine_audit": report.model_dump() if report else None,
+        "quarantine_report": quarantine_report.model_dump(),
+        "skip_detections": {
+            "detections": skip_detections,
+            "summary": skip_summary,
+        },
+        "retry_configuration": retry_result,
     }
