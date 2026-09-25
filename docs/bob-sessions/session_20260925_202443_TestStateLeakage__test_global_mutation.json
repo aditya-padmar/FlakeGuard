@@ -1,0 +1,70 @@
+{
+  "session_id": "9b400593-9749-4087-af8f-5eafc259b551",
+  "timestamp": "2026-09-25T20:24:43.362768+00:00",
+  "test_name": "TestStateLeakage::test_global_mutation",
+  "file_path": "sample-repo/tests/test_leakage.py",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "high",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.95,
+    "state_leakage": 1.0,
+    "environment": 0.0
+  },
+  "reasoning": "State leakage detected (100%): Line 2: Found global_mutation pattern: '\"\"\"Test that mutates global state.\"\"\"'; Line 3: Found shared_instance pattern: 'calc = get_shared_calculator()'; Line 4: Found state_mutation pattern: 'calc.clear()'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 2: Found global_mutation pattern: '\"\"\"Test that mutates global state.\"\"\"'",
+      "source": "source_code",
+      "snippet": "\"\"\"Test that mutates global state.\"\"\"",
+      "line_number": 2
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 3: Found shared_instance pattern: 'calc = get_shared_calculator()'",
+      "source": "source_code",
+      "snippet": "calc = get_shared_calculator()",
+      "line_number": 3
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 4: Found state_mutation pattern: 'calc.clear()'",
+      "source": "source_code",
+      "snippet": "calc.clear()",
+      "line_number": 4
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 6: Found global_mutation pattern: '# Modifies global state'",
+      "source": "source_code",
+      "snippet": "# Modifies global state",
+      "line_number": 6
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 8: Found state_mutation pattern: 'calc.add(i, i)'",
+      "source": "source_code",
+      "snippet": "calc.add(i, i)",
+      "line_number": 8
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates mutable state leakage: 'leak'",
+      "source": "test_name",
+      "snippet": "TestStateLeakage::test_global_mutation",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error suggests residual state: 'previous'",
+      "source": "error_message",
+      "snippet": "AssertionError: state left dirty from previous execution",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_global_mutation(self):\n        \"\"\"Test that mutates global state.\"\"\"\n        calc = get_shared_calculator()\n        calc.clear()\n        \n        # Modifies global state\n        for i in range(5):\n            calc.add(i, i)\n        \n        # Leaves state dirty\n        assert calc.operation_count == 5"
+}
