@@ -1,0 +1,42 @@
+{
+  "session_id": "f7dc25fb-b898-4a85-b5a8-6e8282cfba1e",
+  "timestamp": "2026-09-25T19:47:25.025947+00:00",
+  "test_name": "TestEnvironmentIssues::test_random_failure",
+  "file_path": "sample-repo/tests/test_network.py",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 4: Found random_value pattern: 'if random.random() < 0.3:  # 30% failure rate'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 4: Found random_value pattern: 'if random.random() < 0.3:  # 30% failure rate'",
+      "source": "source_code",
+      "snippet": "if random.random() < 0.3:  # 30% failure rate",
+      "line_number": 4
+    },
+    {
+      "type": "missing_pattern",
+      "description": "Pseudorandom generator used without explicit deterministic seed",
+      "source": "source_code",
+      "snippet": null,
+      "line_number": null
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates environmental/external dependency: 'env'",
+      "source": "test_name",
+      "snippet": "TestEnvironmentIssues::test_random_failure",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_random_failure(self):\n        \"\"\"Test with random behavior - true flakiness.\"\"\"\n        # This is intentionally flaky for demo purposes\n        if random.random() < 0.3:  # 30% failure rate\n            pytest.fail(\"Random failure for flaky test demonstration\")\n        \n        assert True"
+}

@@ -6,11 +6,14 @@ import uuid
 from backend.models.remediation import Fix, FixSuggestion, FixStatus
 from backend.models.classification import Classification
 from backend.remediation.generator import FixGenerator
+from backend.bob.agent import BobAgent
 
 router = APIRouter()
 
 # In-memory storage
 fixes_db = {}
+
+_bob_agent = BobAgent()
 
 
 @router.post("/generate", response_model=Fix)
@@ -21,13 +24,15 @@ async def generate_fix(classification: Classification):
     Returns multiple fix suggestions with confidence scores.
     """
     generator = FixGenerator()
-    
-    # In production, fetch test source from repository
-    test_source = "# Test source would be fetched here"
-    
+
+    # Extract real source code using Bob's AST extractor
+    test_source = _bob_agent.extract_test_source(
+        classification.file_path, classification.test_name
+    )
+
     fix = await generator.generate_fix(classification, test_source)
     fixes_db[fix.fix_id] = fix
-    
+
     return fix
 
 
