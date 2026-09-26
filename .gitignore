@@ -62,3 +62,6 @@ Thumbs.db
 # IDE & Local Tooling
 .codex/
 data/*.json
+data/repos/
+data/uploads/
+

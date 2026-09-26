@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 import uuid
+import sys
 
 from backend.models.detection import TestRun, TestExecution, TestStatus
 
@@ -34,6 +35,8 @@ class TestRunner:
         
         # Build pytest command
         cmd = [
+            sys.executable,
+            "-m",
             "pytest",
             "--tb=short",
             "-v",

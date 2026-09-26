@@ -11,7 +11,8 @@ from backend.api.routes import (
     classification,
     remediation,
     audit,
-    metrics
+    metrics,
+    repository
 )
 
 app = FastAPI(
@@ -35,6 +36,7 @@ app.include_router(classification.router, prefix="/api/classification", tags=["c
 app.include_router(remediation.router, prefix="/api/remediation", tags=["remediation"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["metrics"])
+app.include_router(repository.router, prefix="/api/repository", tags=["repository"])
 
 
 @app.get("/")
