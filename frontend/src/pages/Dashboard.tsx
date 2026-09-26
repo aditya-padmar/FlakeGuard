@@ -7,15 +7,23 @@ import QuarantineTable from '../components/QuarantineTable';
 import type { FlakyTest, RootCause, Fix, QuarantineEntry, Metrics } from '../types';
 import demoData from '../mock/demo-data.json';
 
-export default function Dashboard() {
+interface DashboardProps {
+  initialTab?: 'tests' | 'quarantine' | 'fixes';
+}
+
+export default function Dashboard({ initialTab = 'tests' }: DashboardProps = {}) {
   const [selectedTest, setSelectedTest] = useState<FlakyTest | null>(null);
   const [flakyTests, setFlakyTests] = useState<FlakyTest[]>([]);
   const [rootCauses, setRootCauses] = useState<RootCause[]>([]);
   const [fixes, setFixes] = useState<Fix[]>([]);
   const [quarantine, setQuarantine] = useState<QuarantineEntry[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [activeTab, setActiveTab] = useState<'tests' | 'quarantine' | 'fixes'>('tests');
+  const [activeTab, setActiveTab] = useState<'tests' | 'quarantine' | 'fixes'>(initialTab);
   
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   useEffect(() => {
     // Load demo data
     setFlakyTests(demoData.flakyTests as FlakyTest[]);
