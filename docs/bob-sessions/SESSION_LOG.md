@@ -364,3 +364,327 @@
 - **Subagent Scores**: `{'timing': 0.75, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
 - **Reasoning**: High probability of timing flakiness (75%): Line 17: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 24: Found timeout pattern: 'done.wait(timeout=0.03)'.
 - **Evidence Count**: 3 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.8}`
+- **Reasoning**: Environment/network dependency detected (80%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 3 items identified
+
+### Session: `test_completely_opaque` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `UNKNOWN` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.0, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Classified as unknown based on parallel subagent pattern analysis.
+- **Evidence Count**: 0 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `ENVIRONMENT` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.55}`
+- **Reasoning**: Environment/network dependency detected (55%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 2 items identified
+
+### Session: `TestSample::test_example` (2026-09-26 07:11:43 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.75, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (75%): Line 17: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 24: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 C3\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 C6\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 DEVKIT\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 H2\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 18: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 18: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 36: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::setLed` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::setup` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::loop` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\main\main.c::set_led` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.55, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 39: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 42: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 55: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 8 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.35, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 33: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 36: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 49: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `GPIO Toggle ESP32 RGB S2\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 42: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(30));'; Line 42: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(30));'; Line 57: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::moving_average` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::adc_init` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::read_sensor` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::app_main` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `TIMING` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.4, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (40%).
+- **Evidence Count**: 2 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_init` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.6, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_init(void)'; Line 14: Found shared_state pattern: 'static void led_on(void)'; Line 19: Found shared_state pattern: 'static void led_off(void)'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_on` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.4, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_on(void)'; Line 6: Found shared_state pattern: 'static void led_off(void)'; Line 14: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_off` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_off(void)'; Line 9: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'; Line 10: Found shared_state pattern: 'static i2c_master_dev_handle_t dev_handle = NULL;'.
+- **Evidence Count**: 6 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::i2c_master_init` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.35, 'ordering': 0.6, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 1: Found hardware_peripheral pattern: 'static bool i2c_master_init(void)'; Line 3: Found hardware_peripheral pattern: 'i2c_master_bus_config_t bus_config = {'; Line 26: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::i2c_add_device` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.8, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 4: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'; Line 13: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);'; Line 31: Found hardware_peripheral pattern: 'i2c_master_dev_handle_t scan_handle = NULL;'.
+- **Evidence Count**: 10 items identified
+
+### Session: `MPU6050_CLEAN\main\mpu6050.h::mpu6050` (2026-09-26 07:21:19 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 6: Found hardware_peripheral pattern: '// MPU6050 I2C Address (AD0 = GND)'; Line 7: Found hardware_peripheral pattern: '#define MPU6050_ADDR            0x68'; Line 9: Found hardware_peripheral pattern: '// MPU6050 Register Map'.
+- **Evidence Count**: 28 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 07:23:06 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 07:23:06 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.8}`
+- **Reasoning**: Environment/network dependency detected (80%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 3 items identified
+
+### Session: `test_completely_opaque` (2026-09-26 07:23:07 UTC)
+- **Verdict**: `UNKNOWN` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.0, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Classified as unknown based on parallel subagent pattern analysis.
+- **Evidence Count**: 0 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 07:23:07 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 07:23:07 UTC)
+- **Verdict**: `ENVIRONMENT` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.55}`
+- **Reasoning**: Environment/network dependency detected (55%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 2 items identified
+
+### Session: `TestSample::test_example` (2026-09-26 07:23:07 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.75, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (75%): Line 17: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 24: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 C3\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 C6\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 DEVKIT\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 28: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'; Line 28: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 4 items identified
+
+### Session: `GPIO Toggle ESP32 H2\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 18: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 18: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 36: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::setLed` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::setup` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\ESP32 button toggles onboard LED.c::loop` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.35, 'state_leakage': 0.25, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.
+- **Evidence Count**: 3 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\main\main.c::set_led` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.55, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 39: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 42: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 55: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 8 items identified
+
+### Session: `GPIO Toggle ESP32 RGB C3\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.35, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 33: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 36: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 49: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `GPIO Toggle ESP32 RGB S2\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 42: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(30));'; Line 42: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(30));'; Line 57: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 6 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::moving_average` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::adc_init` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::read_sensor` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.9, 'ordering': 0.4, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (90%).
+- **Evidence Count**: 4 items identified
+
+### Session: `HR-TEST\HR-TEST\hr_test\main\main.c::app_main` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `TIMING` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.4, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (40%).
+- **Evidence Count**: 2 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_init` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.6, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_init(void)'; Line 14: Found shared_state pattern: 'static void led_on(void)'; Line 19: Found shared_state pattern: 'static void led_off(void)'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_on` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.4, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_on(void)'; Line 6: Found shared_state pattern: 'static void led_off(void)'; Line 14: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::led_off` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ORDERING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 1.0, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_off(void)'; Line 9: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'; Line 10: Found shared_state pattern: 'static i2c_master_dev_handle_t dev_handle = NULL;'.
+- **Evidence Count**: 6 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::i2c_master_init` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.35, 'ordering': 0.6, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 1: Found hardware_peripheral pattern: 'static bool i2c_master_init(void)'; Line 3: Found hardware_peripheral pattern: 'i2c_master_bus_config_t bus_config = {'; Line 26: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'.
+- **Evidence Count**: 7 items identified
+
+### Session: `MPU6050_CLEAN\main\main.c::i2c_add_device` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.8, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 4: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'; Line 13: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);'; Line 31: Found hardware_peripheral pattern: 'i2c_master_dev_handle_t scan_handle = NULL;'.
+- **Evidence Count**: 10 items identified
+
+### Session: `MPU6050_CLEAN\main\mpu6050.h::mpu6050` (2026-09-26 07:24:47 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 6: Found hardware_peripheral pattern: '// MPU6050 I2C Address (AD0 = GND)'; Line 7: Found hardware_peripheral pattern: '#define MPU6050_ADDR            0x68'; Line 9: Found hardware_peripheral pattern: '// MPU6050 Register Map'.
+- **Evidence Count**: 28 items identified
+
+### Session: `main.c::set_led` (2026-09-26 07:25:13 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.55, 'state_leakage': 0.2, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 39: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 42: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 55: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 5 items identified
+
+### Session: `main.c::app_main` (2026-09-26 07:25:13 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.35, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 33: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 36: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 49: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.
+- **Evidence Count**: 5 items identified

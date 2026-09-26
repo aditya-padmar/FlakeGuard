@@ -1,0 +1,70 @@
+{
+  "session_id": "27a08675-199c-4944-bc35-5acfbcbec955",
+  "timestamp": "2026-09-26T07:21:19.890033+00:00",
+  "test_name": "MPU6050_CLEAN\\main\\main.c::led_init",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_50bc6b02\\GPIO-TEST-master\\MPU6050_CLEAN\\main\\main.c",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "high",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 1.0,
+    "state_leakage": 0.6,
+    "environment": 1.0
+  },
+  "reasoning": "Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_init(void)'; Line 14: Found shared_state pattern: 'static void led_on(void)'; Line 19: Found shared_state pattern: 'static void led_off(void)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found shared_state pattern: 'static void led_init(void)'",
+      "source": "source_code",
+      "snippet": "static void led_init(void)",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 14: Found shared_state pattern: 'static void led_on(void)'",
+      "source": "source_code",
+      "snippet": "static void led_on(void)",
+      "line_number": 14
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 19: Found shared_state pattern: 'static void led_off(void)'",
+      "source": "source_code",
+      "snippet": "static void led_off(void)",
+      "line_number": 19
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 27: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "static i2c_master_bus_handle_t bus_handle = NULL;",
+      "line_number": 27
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 28: Found shared_state pattern: 'static i2c_master_dev_handle_t dev_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "static i2c_master_dev_handle_t dev_handle = NULL;",
+      "line_number": 28
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 30: Found shared_state pattern: 'static bool i2c_master_init(void)'",
+      "source": "source_code",
+      "snippet": "static bool i2c_master_init(void)",
+      "line_number": 30
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 52: Found shared_state pattern: 'static bool i2c_add_device(uint16_t addr, uint32_t speed)'",
+      "source": "source_code",
+      "snippet": "static bool i2c_add_device(uint16_t addr, uint32_t speed)",
+      "line_number": 52
+    }
+  ],
+  "test_source_snippet": "static void led_init(void)\n{\n    gpio_config_t io_conf = {\n        .pin_bit_mask = (1ULL << LED_GPIO),\n        .mode = GPIO_MODE_OUTPUT,\n        .pull_up_en = GPIO_PULLUP_DISABLE,\n        .pull_down_en = GPIO_PULLDOWN_DISABLE,\n        .intr_type = GPIO_INTR_DISABLE,\n    };\n    gpio_config(&io_conf);\n    gpio_set_level(LED_GPIO, 1);  // LED ON at startup\n}\n\nstatic void led_on(void)\n{\n    gpio_set_level(LED_GPIO, 1);\n}\n\nstatic void led_off(void)\n{\n    gpio_set_level(LED_GPIO, 0);\n}\n\n// ==========="
+}

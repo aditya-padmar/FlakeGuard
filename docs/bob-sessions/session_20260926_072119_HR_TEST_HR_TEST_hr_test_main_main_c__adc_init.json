@@ -1,0 +1,49 @@
+{
+  "session_id": "98be7fcf-caaf-4a5c-a9ef-4c48e06119cd",
+  "timestamp": "2026-09-26T07:21:19.887774+00:00",
+  "test_name": "HR-TEST\\HR-TEST\\hr_test\\main\\main.c::adc_init",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_50bc6b02\\GPIO-TEST-master\\HR-TEST\\HR-TEST\\hr_test\\main\\main.c",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.9,
+    "ordering": 0.4,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Timing flakiness detected based on execution logs and test characteristics (90%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 108: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 127: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit(dev_handle, buf, 2, pdMS_TO_TICKS(1000));'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 136: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(dev_handle, &reg, 1, value, 1, pdMS_TO_TIC",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "static void adc_init(void)\n{\n    adc_oneshot_unit_init_cfg_t adc_config = {\n\n        .unit_id = ADC_UNIT_1,\n\n        .ulp_mode = ADC_ULP_MODE_DISABLE\n    };\n\n\n    ESP_ERROR_CHECK(\n\n        adc_oneshot_new_unit(\n\n            &adc_config,\n\n            &adc_handle\n        )\n    );\n\n\n    adc_oneshot_chan_cfg_t channel_config = {\n\n        .bitwidth = ADC_BITWIDTH_DEFAULT,\n\n        .atten = ADC_ATTEN_DB_12\n    };\n\n\n    ESP_ERROR_CHECK(\n\n        adc_oneshot_config_channel(\n\n            adc_handle,\n\n   "
+}

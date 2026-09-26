@@ -1,0 +1,49 @@
+{
+  "session_id": "a769ba5b-e5dc-4578-9d50-17cd894dfa8b",
+  "timestamp": "2026-09-26T07:24:47.627744+00:00",
+  "test_name": "HR-TEST\\HR-TEST\\hr_test\\main\\main.c::read_sensor",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_50bc6b02\\GPIO-TEST-master\\HR-TEST\\HR-TEST\\hr_test\\main\\main.c",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.9,
+    "ordering": 0.4,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Timing flakiness detected based on execution logs and test characteristics (90%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 108: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 127: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit(dev_handle, buf, 2, pdMS_TO_TICKS(1000));'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 136: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(dev_handle, &reg, 1, value, 1, pdMS_TO_TIC",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "static int read_sensor(void)\n{\n    int raw = 0;\n\n\n    esp_err_t result =\n\n        adc_oneshot_read(\n\n            adc_handle,\n\n            PULSE_ADC_CHANNEL,\n\n            &raw\n        );\n\n\n    if (result != ESP_OK)\n    {\n        return -1;\n    }\n\n\n    return raw;\n}\n\n\n/* =========================================================\n   HEART RATE STATUS\n   ========================================================= */\n\nstatic const char *get_status(float bpm)\n{\n    if (bpm < 60)\n    {\n        return \"LOW"
+}

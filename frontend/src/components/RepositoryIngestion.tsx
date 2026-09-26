@@ -280,11 +280,13 @@ export default function RepositoryIngestion({
     setDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.name.endsWith('.zip') || file.name.endsWith('.py')) {
+      const validExts = ['.zip', '.tar', '.gz', '.tgz', '.py', '.c', '.cpp', '.cc', '.h', '.hpp', '.js', '.jsx', '.ts', '.tsx', '.go', '.java', '.kt', '.rs'];
+      const lower = file.name.toLowerCase();
+      if (validExts.some(ext => lower.endsWith(ext))) {
         setSelectedFile(file);
         setErrorMessage(null);
       } else {
-        setErrorMessage('Only .zip archives or .py test files are supported.');
+        setErrorMessage('Unsupported file format. Please upload an archive (.zip, .tar.gz) or code file (.c, .cpp, .js, .ts, .go, .java, .py).');
       }
     }
   };
@@ -328,7 +330,7 @@ export default function RepositoryIngestion({
         >
           <span className="tab-icon">📁</span>
           <span className="tab-text">Upload Test Suite</span>
-          <span className="tab-badge">.zip / .py</span>
+          <span className="tab-badge">Polyglot / Archive</span>
         </button>
 
         <button
@@ -455,7 +457,7 @@ export default function RepositoryIngestion({
               <input
                 id="archive-file-input"
                 type="file"
-                accept=".zip,.py"
+                accept=".zip,.tar,.gz,.tgz,.py,.c,.cpp,.cc,.h,.hpp,.js,.jsx,.ts,.tsx,.go,.java,.kt,.rs"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
@@ -480,8 +482,8 @@ export default function RepositoryIngestion({
                   </div>
                 ) : (
                   <>
-                    <p className="dropzone-title">Drag & drop project .zip or test .py file</p>
-                    <p className="dropzone-subtitle">or click to browse from your machine</p>
+                    <p className="dropzone-title">Drag & drop archive (.zip, .tar.gz) or source/test file</p>
+                    <p className="dropzone-subtitle">Supports C/C++, Embedded, JS/TS, Python, Go, Java, Rust</p>
                   </>
                 )}
               </div>
