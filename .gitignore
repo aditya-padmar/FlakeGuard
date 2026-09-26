@@ -62,3 +62,9 @@ Thumbs.db
 # IDE & Local Tooling
 .codex/
 data/*.json
+
+# FlakeGuard runtime artifacts
+sample-repo/.temp_results_*.json
+sample-repo/.test_report.json
+sample-repo/.flakeguard_state/
+vs_buildtools.exe
