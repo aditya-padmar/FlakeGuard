@@ -1,0 +1,63 @@
+{
+  "session_id": "26c67ee4-a426-4acd-9ab1-c361e8fb2eef",
+  "timestamp": "2026-09-26T07:31:32.918779+00:00",
+  "test_name": "frontend\\src\\pages\\Attendance.tsx::Attendance",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_2e9c8950\\DayFlow-hackathon-project-main\\frontend\\src\\pages\\Attendance.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.55,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 129: Found network_call pattern: 'return leaveRequests.some(l => {'; Line 158: Found network_call pattern: 'return leaveRequests.some(l => {'; Line 194: Found network_call pattern: 'const activeLeave = leaveRequests.find(l => {'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 129: Found network_call pattern: 'return leaveRequests.some(l => {'",
+      "source": "source_code",
+      "snippet": "return leaveRequests.some(l => {",
+      "line_number": 129
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 158: Found network_call pattern: 'return leaveRequests.some(l => {'",
+      "source": "source_code",
+      "snippet": "return leaveRequests.some(l => {",
+      "line_number": 158
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 194: Found network_call pattern: 'const activeLeave = leaveRequests.find(l => {'",
+      "source": "source_code",
+      "snippet": "const activeLeave = leaveRequests.find(l => {",
+      "line_number": 194
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 129: Found network_call pattern: 'return leaveRequests.some(l => {'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 158: Found network_call pattern: 'return leaveRequests.some(l => {'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 194: Found network_call pattern: 'const activeLeave = leaveRequests.find(l => {'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React, { useState, useEffect } from 'react';\nimport { useAuth } from '../context/AuthContext';\nimport { db } from '../lib/db';\nimport { Attendance, LeaveRequest, User } from '../types';\nimport { \n  format, \n  subMonths, \n  addMonths, \n  startOfMonth, \n  endOfMonth, \n  startOfWeek,\n  endOfWeek,\n  eachDayOfInterval, \n  isWeekend, \n  isSameDay, \n  isSameMonth,\n  parseISO,\n  isWithinInterval,\n  isAfter,\n  isBefore\n} from 'date-fns';\nimport { \n  Clock, \n  Play, \n  Square, \n  Check, \n  ChevronL"
+}

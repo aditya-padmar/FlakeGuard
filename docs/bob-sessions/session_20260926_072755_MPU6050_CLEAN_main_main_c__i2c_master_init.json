@@ -1,0 +1,70 @@
+{
+  "session_id": "a6f8d5a9-d5fe-4215-9dea-8ee5a3a3f8c7",
+  "timestamp": "2026-09-26T07:27:55.000682+00:00",
+  "test_name": "MPU6050_CLEAN\\main\\main.c::i2c_master_init",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_53c2ff60\\MPU6050_CLEAN\\main\\main.c",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.35,
+    "ordering": 0.6,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 1: Found hardware_peripheral pattern: 'static bool i2c_master_init(void)'; Line 3: Found hardware_peripheral pattern: 'i2c_master_bus_config_t bus_config = {'; Line 26: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found hardware_peripheral pattern: 'static bool i2c_master_init(void)'",
+      "source": "source_code",
+      "snippet": "static bool i2c_master_init(void)",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 3: Found hardware_peripheral pattern: 'i2c_master_bus_config_t bus_config = {'",
+      "source": "source_code",
+      "snippet": "i2c_master_bus_config_t bus_config = {",
+      "line_number": 3
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 26: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'",
+      "source": "source_code",
+      "snippet": "i2c_master_bus_rm_device(dev_handle);",
+      "line_number": 26
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 35: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);'",
+      "source": "source_code",
+      "snippet": "esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);",
+      "line_number": 35
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 53: Found hardware_peripheral pattern: 'i2c_master_dev_handle_t scan_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "i2c_master_dev_handle_t scan_handle = NULL;",
+      "line_number": 53
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 54: Found hardware_peripheral pattern: 'if (i2c_master_bus_add_device(bus_handle, &scan_cfg, &scan_handle) == ESP_OK) {'",
+      "source": "source_code",
+      "snippet": "if (i2c_master_bus_add_device(bus_handle, &scan_cfg, &scan_handle) == ESP_OK) {",
+      "line_number": 54
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 56: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO_TICKS(50));'",
+      "source": "source_code",
+      "snippet": "esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO_TICKS(50));",
+      "line_number": 56
+    }
+  ],
+  "test_source_snippet": "static bool i2c_master_init(void)\n{\n    i2c_master_bus_config_t bus_config = {\n        .clk_source = I2C_CLK_SRC_DEFAULT,\n        .i2c_port = I2C_PORT,\n        .scl_io_num = I2C_SCL_PIN,\n        .sda_io_num = I2C_SDA_PIN,\n        .glitch_ignore_cnt = 7,\n        .flags.enable_internal_pullup = true,\n    };\n\n    esp_err_t ret = i2c_new_master_bus(&bus_config, &bus_handle);\n    if (ret != ESP_OK) {\n        ESP_LOGE(TAG, \"Failed to create I2C master bus: %s\", esp_err_to_name(ret));\n        return fa"
+}

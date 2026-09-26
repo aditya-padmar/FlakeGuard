@@ -1,0 +1,56 @@
+{
+  "session_id": "b03a2b06-30e1-4b9d-9508-c123cdcdd11c",
+  "timestamp": "2026-09-26T07:28:48.872029+00:00",
+  "test_name": "GPIO Toggle ESP32 H2\\main\\main.c::app_main",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_caf105dc\\GPIO-TEST-master\\GPIO Toggle ESP32 H2\\main\\main.c",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 1.0,
+    "ordering": 0.0,
+    "state_leakage": 0.4,
+    "environment": 1.0
+  },
+  "reasoning": "High probability of timing flakiness (100%): Line 18: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 18: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'; Line 36: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 18: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(500));",
+      "line_number": 18
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 18: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(500));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(500));",
+      "line_number": 18
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 36: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(1000));",
+      "line_number": 36
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 36: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(1000));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(1000));",
+      "line_number": 36
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "void app_main(void)\n{\n    ESP_LOGI(TAG, \"Starting button LED control - ESP32-H2 (GPIO%d LED, GPIO%d Button)\", LED_GPIO, BOOT_BUTTON_GPIO);\n\n    gpio_config_t led_conf = {\n        .pin_bit_mask = (1ULL << LED_GPIO),\n        .mode = GPIO_MODE_OUTPUT,\n        .pull_up_en = GPIO_PULLUP_DISABLE,\n        .pull_down_en = GPIO_PULLDOWN_DISABLE,\n        .intr_type = GPIO_INTR_DISABLE,\n    };\n    ESP_ERROR_CHECK(gpio_config(&led_conf));\n\n    ESP_LOGI(TAG, \"LED test: ON-OFF-ON-OFF cycle\");\n    for (int i ="
+}

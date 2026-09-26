@@ -9,10 +9,21 @@ class OrderingSubagent:
     """Analyzes tests for order dependency issues."""
 
     PATTERNS = {
-        "shared_state": r"get_shared_|shared_state|_shared_|class_state|global\s+\w+",
-        "order_assertion": r"operation_count\s*==\s*[1-9]|last_result\s*==\s*\d+|state\s*==|run_order",
-        "order_naming": r"test_first|test_second|test_third|test_[0-9]|before_|after_",
-        "shared_fixture": r"shared_fixture|@pytest\.fixture\(scope=[\"'](module|session|class)[\"']\)"
+        "shared_state": (
+            r"get_shared_|shared_state|_shared_|class_state|global\s+\w+|"
+            r"static\s+\w+\s+\w+|volatile\s+\w+|extern\s+\w+|"
+            r"globalThis\.\w+|window\.\w+|global\.\w+|"
+            r"public\s+static\s+\w+|sync\.Once"
+        ),
+        "order_assertion": (
+            r"operation_count\s*==\s*[1-9]|last_result\s*==\s*\d+|state\s*==|run_order|"
+            r"expect\(.*order|assert_order|TEST_ASSERT_EQUAL.*state"
+        ),
+        "order_naming": r"test_first|test_second|test_third|test_[0-9]|before_|after_|step[0-9]|init_order",
+        "shared_fixture": (
+            r"shared_fixture|@pytest\.fixture\(scope=[\"'](module|session|class)[\"']\)|"
+            r"beforeAll|beforeEach|setUpClass|@BeforeClass|@BeforeAll"
+        )
     }
 
     def __init__(self):

@@ -1,0 +1,49 @@
+{
+  "session_id": "1c50d9f3-15f0-44c5-b6f9-92aa5e4664dd",
+  "timestamp": "2026-09-26T07:24:47.626142+00:00",
+  "test_name": "HR-TEST\\HR-TEST\\hr_test\\main\\main.c::moving_average",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_50bc6b02\\GPIO-TEST-master\\HR-TEST\\HR-TEST\\hr_test\\main\\main.c",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.9,
+    "ordering": 0.4,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Timing flakiness detected based on execution logs and test characteristics (90%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 108: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 127: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit(dev_handle, buf, 2, pdMS_TO_TICKS(1000));'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 136: Found timeout pattern: 'esp_err_t ret = i2c_master_transmit_receive(dev_handle, &reg, 1, value, 1, pdMS_TO_TIC",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "static int moving_average(int value)\n{\n    filter_sum -= filter_buffer[filter_index];\n\n    filter_buffer[filter_index] = value;\n\n    filter_sum += value;\n\n    filter_index++;\n\n    if (filter_index >= FILTER_SIZE)\n    {\n        filter_index = 0;\n    }\n\n    return filter_sum / FILTER_SIZE;\n}\n\n\n/* =========================================================\n   ADC INITIALIZATION\n   ========================================================= */\n\nstatic void adc_init(void)\n{\n    adc_oneshot_unit_init_cfg_"
+}

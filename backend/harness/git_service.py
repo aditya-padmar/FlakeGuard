@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import zipfile
+import tarfile
 import uuid
 import subprocess
 import logging
@@ -51,15 +52,7 @@ class GitService:
     ) -> Dict[str, Any]:
         """
         Clone a remote GitHub repository into an isolated sandbox.
-        
-        Args:
-            repo_url: GitHub repository URL
-            branch: Optional branch/tag/ref
-            token: Optional GitHub Personal Access Token (for private repos or rate limit exemption)
-            depth: Git clone depth (default: 1 for fast shallow clone)
-            
-        Returns:
-            Dictionary with clone metadata (path, commit_sha, branch, owner, repo)
+        Automatically falls back to default branch (HEAD) if requested branch is not found.
         """
         parsed = cls.parse_github_url(repo_url)
         if not parsed:
@@ -87,15 +80,33 @@ class GitService:
                 text=True,
                 timeout=120
             )
+
+            # Smart branch fallback: If branch was specified (e.g. 'main') but does not exist on remote
+            # (e.g. repo uses 'master'), retry without --branch to clone the remote's default HEAD branch
+            if result.returncode != 0 and branch and ("Remote branch" in result.stderr or "not found" in result.stderr.lower()):
+                logger.warning(
+                    "Branch '%s' not found for %s/%s. Retrying clone with upstream default branch...",
+                    branch, owner, repo
+                )
+                if destination.exists():
+                    shutil.rmtree(destination, ignore_errors=True)
+                fallback_cmd = ["git", "clone", f"--depth={depth}", auth_url, str(destination)]
+                result = subprocess.run(
+                    fallback_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+
             if result.returncode != 0:
                 sanitized_stderr = result.stderr.replace(token or "", "[REDACTED]") if token else result.stderr
                 raise RuntimeError(f"Git clone failed: {sanitized_stderr.strip()}")
 
             # Extract current commit and branch
             commit_sha = cls._get_commit_sha(destination)
-            actual_branch = branch or cls._get_branch(destination)
+            actual_branch = cls._get_branch(destination)
 
-            # Discover test files
+            # Discover test & source files across any language
             test_files = cls.discover_tests(destination)
 
             return {
@@ -122,7 +133,7 @@ class GitService:
     @classmethod
     def handle_archive_upload(cls, file_bytes: bytes, filename: str) -> Dict[str, Any]:
         """
-        Extract uploaded archive (.zip) or single test file (.py) into an isolated workspace.
+        Extract uploaded archive (.zip, .tar, .tar.gz) or single code file across any programming language.
         
         Args:
             file_bytes: Raw bytes of the uploaded file
@@ -135,7 +146,15 @@ class GitService:
         target_dir = UPLOADS_DIR / upload_id
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        if filename.endswith(".zip"):
+        lower_name = filename.lower()
+        supported_code_exts = (
+            ".py", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp",
+            ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
+            ".go", ".java", ".kt", ".rs", ".rb", ".php", ".cs",
+            ".sh", ".txt", ".json", ".yaml", ".yml"
+        )
+
+        if lower_name.endswith(".zip"):
             zip_path = target_dir / "uploaded.zip"
             zip_path.write_bytes(file_bytes)
 
@@ -150,7 +169,7 @@ class GitService:
 
                 zip_path.unlink()
 
-                # If zip contains a single top-level directory (e.g. repo-main/), use that as workspace
+                # If zip contains a single top-level directory (e.g. repo-master/), use that as workspace
                 entries = [e for e in target_dir.iterdir() if e.is_dir() and not e.name.startswith(".")]
                 loose_files = [f for f in target_dir.iterdir() if f.is_file()]
                 if len(entries) == 1 and not loose_files:
@@ -162,23 +181,48 @@ class GitService:
                 shutil.rmtree(target_dir, ignore_errors=True)
                 raise ValueError("Uploaded file is not a valid zip archive.")
 
-        elif filename.endswith(".py"):
-            # Single python test file uploaded
-            tests_dir = target_dir / "tests"
-            tests_dir.mkdir(parents=True, exist_ok=True)
-            test_file = tests_dir / filename
+        elif lower_name.endswith((".tar", ".tar.gz", ".tgz")):
+            tar_path = target_dir / "uploaded.tar.gz"
+            tar_path.write_bytes(file_bytes)
+
+            try:
+                with tarfile.open(tar_path, "r:*") as tar_ref:
+                    for member in tar_ref.getmembers():
+                        resolved = (target_dir / member.name).resolve()
+                        if not str(resolved).startswith(str(target_dir.resolve())):
+                            raise ValueError(f"Malicious tar entry detected: {member.name}")
+                    tar_ref.extractall(target_dir)
+
+                tar_path.unlink()
+
+                entries = [e for e in target_dir.iterdir() if e.is_dir() and not e.name.startswith(".")]
+                loose_files = [f for f in target_dir.iterdir() if f.is_file()]
+                if len(entries) == 1 and not loose_files:
+                    workspace = entries[0]
+                else:
+                    workspace = target_dir
+
+            except Exception as e:
+                shutil.rmtree(target_dir, ignore_errors=True)
+                raise ValueError(f"Failed to extract tar archive: {e}")
+
+        elif any(lower_name.endswith(ext) for ext in supported_code_exts):
+            test_file = target_dir / filename
             test_file.write_bytes(file_bytes)
 
-            # Generate a minimal pytest.ini to enable discovery
-            ini_file = target_dir / "pytest.ini"
-            ini_file.write_text(
-                "[pytest]\npythonpath = .\ntestpaths = tests\nasyncio_mode = auto\n",
-                encoding="utf-8"
-            )
+            if lower_name.endswith(".py"):
+                ini_file = target_dir / "pytest.ini"
+                ini_file.write_text(
+                    "[pytest]\npythonpath = .\ntestpaths = .\nasyncio_mode = auto\n",
+                    encoding="utf-8"
+                )
             workspace = target_dir
         else:
             shutil.rmtree(target_dir, ignore_errors=True)
-            raise ValueError(f"Unsupported file format: {filename}. Supported: .zip, .py")
+            raise ValueError(
+                f"Unsupported file format: '{filename}'. "
+                f"FlakeGuard supports archives (.zip, .tar.gz) and source files ({', '.join(supported_code_exts[:10])}, ...)."
+            )
 
         test_files = cls.discover_tests(workspace)
 
@@ -192,13 +236,50 @@ class GitService:
 
     @staticmethod
     def discover_tests(directory: Path) -> List[Path]:
-        """Find pytest test files in directory."""
-        patterns = ["**/test_*.py", "**/*_test.py"]
+        """Find test files or primary source files in directory across any language."""
+        test_patterns = [
+            # Python
+            "**/test_*.py", "**/*_test.py", "**/tests/**/*.py",
+            # JavaScript / TypeScript
+            "**/*.test.js", "**/*.test.ts", "**/*.test.jsx", "**/*.test.tsx",
+            "**/*.spec.js", "**/*.spec.ts", "**/*.spec.jsx", "**/*.spec.tsx",
+            "**/__tests__/**/*.js", "**/__tests__/**/*.ts",
+            # Go
+            "**/*_test.go",
+            # Java / Kotlin
+            "**/*Test.java", "**/*Tests.java", "**/*TestCase.java", "**/*Test.kt",
+            # C / C++
+            "**/test_*.c", "**/test_*.cpp", "**/*_test.c", "**/*_test.cpp",
+            "**/test*.c", "**/test*.cpp", "**/tests/**/*.c", "**/tests/**/*.cpp",
+            # Rust
+            "**/tests/**/*.rs", "**/*_test.rs"
+        ]
         found = set()
-        for pat in patterns:
-            for p in directory.glob(pat):
-                if p.is_file() and not any(part.startswith(".") or part in ("venv", ".venv", "node_modules") for part in p.parts):
-                    found.add(p)
+        ignore_dirs = {".git", ".venv", "venv", "node_modules", ".pytest_cache", "__pycache__", "build", "dist", ".vscode"}
+
+        for pat in test_patterns:
+            try:
+                for p in directory.glob(pat):
+                    if p.is_file() and not any(part in ignore_dirs or part.startswith(".") for part in p.parts):
+                        found.add(p)
+            except Exception:
+                continue
+
+        # If no explicit test files were discovered, fall back to discovering primary code files
+        if not found:
+            code_patterns = [
+                "**/*.c", "**/*.cpp", "**/*.cc", "**/*.h", "**/*.hpp",
+                "**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx",
+                "**/*.py", "**/*.go", "**/*.java", "**/*.rs"
+            ]
+            for pat in code_patterns:
+                try:
+                    for p in directory.glob(pat):
+                        if p.is_file() and not any(part in ignore_dirs or part.startswith(".") for part in p.parts):
+                            found.add(p)
+                except Exception:
+                    continue
+
         return sorted(list(found))
 
     @staticmethod
