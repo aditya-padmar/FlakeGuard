@@ -1,8 +1,10 @@
 """Models for test detection and flaky test identification."""
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Literal
 from pydantic import BaseModel, Field
 from enum import Enum
+
+RootCause = Literal["timing", "ordering", "leakage", "environment"]
 
 
 class TestStatus(str, Enum):
@@ -22,6 +24,8 @@ class TestExecution(BaseModel):
     error_message: Optional[str] = None
     error_traceback: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    run_id: Optional[str] = None
+    attempt_index: Optional[int] = None
 
 
 class TestRun(BaseModel):
@@ -36,6 +40,13 @@ class TestRun(BaseModel):
     passed: int = Field(default=0)
     failed: int = Field(default=0)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    ordering_seed: Optional[int] = None
+    ordering: List[str] = Field(default_factory=list)
+    jitter_ms: int = 0
+    env_chaos: Dict[str, str] = Field(default_factory=dict)
+    parallel: bool = False
+    duration_seconds: float = 0.0
+    returncode: Optional[int] = None
 
 
 class FlakyTest(BaseModel):
@@ -50,6 +61,20 @@ class FlakyTest(BaseModel):
     flake_rate: float = Field(..., description="Percentage of times test was flaky")
     recent_failures: List[str] = Field(default_factory=list, description="Recent error messages")
     status_history: List[TestStatus] = Field(default_factory=list)
+    flakiness_score: float = Field(
+        default=0.0,
+        description=(
+            "0-100 score derived from outcome entropy, NOT from failure rate. A test "
+            "failing 9 of 10 runs is mostly BROKEN, not flaky, and must score far lower "
+            "than a 50/50 coin flip. Binary entropy is 0 at p=0 and p=1 and peaks at "
+            "p=0.5, which yields exactly that property."
+        ),
+    )
+    confidence: float = 0.0
+    first_flagged_run: Optional[int] = None
+    failed_orderings: List[int] = Field(default_factory=list)
+    passed_orderings: List[int] = Field(default_factory=list)
+    evidence: Dict[str, object] = Field(default_factory=dict)
 
 
 class DetectionResult(BaseModel):
@@ -62,3 +87,6 @@ class DetectionResult(BaseModel):
     flaky_tests: List[FlakyTest]
     detection_confidence: float = Field(..., ge=0.0, le=1.0)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    stable_tests: List[str] = Field(default_factory=list)
+    rejected_tests: List[Dict[str, object]] = Field(default_factory=list)
+    total_unique_tests: int = 0

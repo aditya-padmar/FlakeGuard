@@ -1,40 +1,20 @@
-"""Tests with ordering-related flakiness patterns."""
-import pytest
-from src.calculator import Calculator, get_shared_calculator
+"""Tests with order dependency flakiness patterns."""
+from src import settings
 
 
 class TestOrderingIssues:
-    """Tests that depend on execution order."""
-    
-    def test_first(self):
-        """Test that must run first - ordering dependency."""
-        calc = get_shared_calculator()
-        calc.clear()
-        
-        calc.add(10, 5)
-        assert calc.last_result == 15
-    
-    def test_second(self):
-        """Test that depends on test_first running before it."""
-        calc = get_shared_calculator()
-        
-        # Flaky: assumes test_first already ran
-        assert calc.operation_count == 1
-        calc.add(5, 5)
-        assert calc.operation_count == 2
-    
-    def test_shared_state_a(self):
-        """Test A that shares state with test B."""
-        calc = get_shared_calculator()
-        calc.multiply(3, 4)
-        
-        # Doesn't verify state is clean
-        assert calc.last_result == 12
-    
-    def test_shared_state_b(self):
-        """Test B that depends on A's cleanup."""
-        calc = get_shared_calculator()
-        
-        # Flaky: depends on whether A ran and what it left behind
-        # This will fail if A ran before and didn't clean up
-        assert calc.last_result is None or calc.last_result == 12
+    """Tests exhibiting order dependency flakiness."""
+
+    def test_configures_retry_limit(self):
+        """Configures the module-level retry limit; must always pass."""
+        settings.RETRY_LIMIT = 3
+        settings.RETRY_LIMIT_SET_BY = "test_configures_retry_limit"
+        assert settings.RETRY_LIMIT == 3
+
+    def test_depends_on_retry_limit(self):
+        """Depends on RETRY_LIMIT being configured by test_configures_retry_limit."""
+        observed = settings.RETRY_LIMIT
+        assert observed == 3, (
+            f"Suspected cause: order dependency. Observed default value {observed} (expected 3). "
+            f"Expected setter test_configures_retry_limit must run before this test."
+        )

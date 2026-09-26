@@ -92,11 +92,11 @@ class TestASTSourceExtractor:
         agent = BobAgent()
         source = agent.extract_test_source(
             "sample-repo/tests/test_timing.py",
-            "TestTimingIssues::test_sleep_based",
+            "TestTimingIssues::test_worker_thread_race",
         )
         # Should return non-empty code containing the function
         assert source != ""
-        assert "def test_sleep_based" in source or "time.sleep" in source
+        assert "def test_worker_thread_race" in source or "time.sleep" in source
 
     def test_returns_empty_for_nonexistent_file(self):
         agent = BobAgent()
@@ -114,7 +114,7 @@ class TestASTSourceExtractor:
             pytest.skip("sample-repo not present")
         full_source = full_path.read_text(encoding="utf-8")
         extracted = agent.extract_test_source(
-            str(full_path), "TestTimingIssues::test_sleep_based"
+            str(full_path), "TestTimingIssues::test_worker_thread_race"
         )
         assert len(extracted) < len(full_source)
 
@@ -187,7 +187,7 @@ class TestRootCauseSelection:
     async def test_classify_timing_test(self):
         agent = BobAgent()
         flaky = _make_flaky_test(
-            test_name="TestTimingIssues::test_sleep_based",
+            test_name="TestTimingIssues::test_worker_thread_race",
             file_path="sample-repo/tests/test_timing.py",
             recent_failures=["AssertionError: assert result == 4"],
         )
@@ -199,9 +199,9 @@ class TestRootCauseSelection:
     async def test_classify_environment_test(self):
         agent = BobAgent()
         flaky = _make_flaky_test(
-            test_name="TestEnvironmentIssues::test_random_failure",
-            file_path="sample-repo/tests/test_network.py",
-            recent_failures=["Failed: Random failure for flaky test demonstration"],
+            test_name="TestEnvironmentIssues::test_region_dependent_totals",
+            file_path="sample-repo/tests/test_environment.py",
+            recent_failures=["AssertionError: Suspected cause: environment dependency. Observed SALES_REGION='EU'"],
         )
         classification = await agent.classify_test(flaky)
         assert classification.root_cause == RootCauseType.ENVIRONMENT
@@ -228,10 +228,10 @@ class TestParallelBatch:
     async def test_batch_returns_all_results(self):
         agent = BobAgent()
         tests = [
-            _make_flaky_test("TestTimingIssues::test_sleep_based",
+            _make_flaky_test("TestTimingIssues::test_worker_thread_race",
                              "sample-repo/tests/test_timing.py"),
-            _make_flaky_test("TestEnvironmentIssues::test_random_failure",
-                             "sample-repo/tests/test_network.py"),
+            _make_flaky_test("TestEnvironmentIssues::test_region_dependent_totals",
+                             "sample-repo/tests/test_environment.py"),
         ]
         results = await agent.classify_batch(tests)
         assert len(results) == 2
@@ -253,7 +253,7 @@ class TestSessionEvidenceLogging:
         with tempfile.TemporaryDirectory() as tmp:
             agent = BobAgent(sessions_dir=tmp)
             flaky = _make_flaky_test(
-                test_name="TestTimingIssues::test_sleep_based",
+                test_name="TestTimingIssues::test_worker_thread_race",
                 file_path="sample-repo/tests/test_timing.py",
             )
             await agent.classify_test(flaky)
@@ -262,7 +262,7 @@ class TestSessionEvidenceLogging:
             assert len(session_files) == 1
 
             data = json.loads(session_files[0].read_text())
-            assert data["test_name"] == "TestTimingIssues::test_sleep_based"
+            assert data["test_name"] == "TestTimingIssues::test_worker_thread_race"
             assert "verdict" in data
             assert "subagent_scores" in data
 
@@ -271,7 +271,7 @@ class TestSessionEvidenceLogging:
         with tempfile.TemporaryDirectory() as tmp:
             agent = BobAgent(sessions_dir=tmp)
             flaky = _make_flaky_test(
-                test_name="TestTimingIssues::test_sleep_based",
+                test_name="TestTimingIssues::test_worker_thread_race",
                 file_path="sample-repo/tests/test_timing.py",
             )
             await agent.classify_test(flaky)
@@ -279,7 +279,7 @@ class TestSessionEvidenceLogging:
             log_file = Path(tmp) / "SESSION_LOG.md"
             assert log_file.exists()
             content = log_file.read_text()
-            assert "test_sleep_based" in content
+            assert "test_worker_thread_race" in content
 
 
 # ── Test 7: Agent status shape ───────────────────────────────────────────────

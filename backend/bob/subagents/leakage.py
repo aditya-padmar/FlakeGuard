@@ -85,7 +85,8 @@ class LeakageSubagent:
                 score += 0.25
 
         # Check error messages for state leakage indicators
-        leakage_keywords = ["already", "stale", "previous", "unexpected value", "state left dirty"]
+        leakage_keywords = ["already", "stale", "previous", "unexpected value", "state left dirty",
+                            "state leakage", "uncleaned", "leftover", "dirty"]
         for msg in error_messages:
             for keyword in leakage_keywords:
                 if keyword in msg.lower():
@@ -95,7 +96,7 @@ class LeakageSubagent:
                         source="error_message",
                         snippet=msg[:120]
                     ))
-                    score += 0.2
+                    score += 0.35
                     break
 
         # If LLM client is available, attempt enhanced agent evaluation
