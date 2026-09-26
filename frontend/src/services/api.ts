@@ -236,10 +236,16 @@ export interface PipelineAnalysisResult {
   runs: number;
   detection: {
     total_runs: number;
+    total_unique_tests?: number;
     flaky_tests_count: number;
     confidence: number;
     flaky_tests: FlakyTest[];
+    stable_tests?: string[];
+    rejected_tests?: Array<{ test_name: string; reason: string; pass_count: number; fail_count: number }>;
   };
+  requested_runs?: number;
+  analysis_mode?: string;
+  validation?: Record<string, unknown>;
   classifications: Array<{
     classification_id: string;
     test_name: string;

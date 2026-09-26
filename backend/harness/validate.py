@@ -2,7 +2,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from backend.harness.framework_detector import detect_framework
 
@@ -46,7 +46,7 @@ class RepositoryValidator:
         }
 
     @classmethod
-    def detect_repository_compatibility(cls, repo_path: Path) -> Dict[str, any]:
+    def detect_repository_compatibility(cls, repo_path: Path) -> Dict[str, Any]:
         """
         Polyglot repository detector supporting any programming language.
         Detects Python (pytest), C/C++ (CMake/ESP-IDF/Make), JavaScript/TypeScript (Jest/Vitest),
