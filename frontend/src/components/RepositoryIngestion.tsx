@@ -65,8 +65,10 @@ export default function RepositoryIngestion({
       return;
     }
 
+    // Clear ALL previous results before starting a new analysis
     setLoading(true);
     setErrorMessage(null);
+    setSuccessInfo(null);
     setCurrentStep(1);
     setStatusMessage(`Cloning ${repoUrl} (branch: ${branch || 'default'})...`);
 
@@ -99,20 +101,43 @@ export default function RepositoryIngestion({
       clearTimeout(t2);
       clearTimeout(t3);
 
+      const data = response.data;
+      const flakyCount = data.detection?.flaky_tests_count ?? 0;
+      const fixesCount = data.fixes?.length ?? 0;
+
+      // Handle non-success responses without crashing
+      if (data.status === 'no_tests' || data.status === 'unsupported') {
+        const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`No Tests Found: ${reason}`);
+        return;
+      }
+
+      if (data.status === 'error') {
+        const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`GitHub Analysis Failed: ${reason}`);
+        return;
+      }
+
       setCurrentStep(5);
       setStatusMessage('Pipeline complete!');
       setSuccessInfo({
         source: repoUrl,
-        flakyCount: response.data.detection.flaky_tests_count,
-        fixesCount: response.data.fixes.length,
+        flakyCount,
+        fixesCount,
         time: new Date().toLocaleTimeString()
       });
-      onAnalysisComplete(response.data);
+      onAnalysisComplete(data);
     } catch (err: any) {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       const detail = err.response?.data?.detail || err.message || 'Analysis failed';
+      setCurrentStep(0);
+      setSuccessInfo(null);
       setErrorMessage(`GitHub Analysis Failed: ${detail}`);
     } finally {
       setLoading(false);
@@ -128,6 +153,7 @@ export default function RepositoryIngestion({
 
     setLoading(true);
     setErrorMessage(null);
+    setSuccessInfo(null);
     setCurrentStep(1);
     setStatusMessage(`Unpacking and sandboxing ${selectedFile.name}...`);
 
@@ -153,19 +179,41 @@ export default function RepositoryIngestion({
       clearTimeout(t1);
       clearTimeout(t2);
 
+      const data = response.data;
+      const flakyCount = data.detection?.flaky_tests_count ?? 0;
+      const fixesCount = data.fixes?.length ?? 0;
+
+      if (data.status === 'no_tests' || data.status === 'unsupported') {
+        const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`No Tests Found: ${reason}`);
+        return;
+      }
+
+      if (data.status === 'error') {
+        const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`Upload Analysis Failed: ${reason}`);
+        return;
+      }
+
       setCurrentStep(5);
       setStatusMessage('Analysis complete!');
       setSuccessInfo({
         source: selectedFile.name,
-        flakyCount: response.data.detection.flaky_tests_count,
-        fixesCount: response.data.fixes.length,
+        flakyCount,
+        fixesCount,
         time: new Date().toLocaleTimeString()
       });
-      onAnalysisComplete(response.data);
+      onAnalysisComplete(data);
     } catch (err: any) {
       clearTimeout(t1);
       clearTimeout(t2);
       const detail = err.response?.data?.detail || err.message || 'Upload analysis failed';
+      setCurrentStep(0);
+      setSuccessInfo(null);
       setErrorMessage(`Upload Analysis Failed: ${detail}`);
     } finally {
       setLoading(false);
@@ -174,8 +222,10 @@ export default function RepositoryIngestion({
 
   const handleLocalAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Clear ALL previous results before starting a new analysis
     setLoading(true);
     setErrorMessage(null);
+    setSuccessInfo(null);
     setCurrentStep(2);
     setStatusMessage(`Executing ${numRuns} test iterations on local suite: ${localPath}...`);
 
@@ -186,17 +236,39 @@ export default function RepositoryIngestion({
         test_pattern: testPattern.trim() || undefined
       });
 
+      const data = response.data;
+      const flakyCount = data.detection?.flaky_tests_count ?? 0;
+      const fixesCount = data.fixes?.length ?? 0;
+
+      if (data.status === 'no_tests' || data.status === 'unsupported') {
+        const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`No Tests Found: ${reason}`);
+        return;
+      }
+
+      if (data.status === 'error') {
+        const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
+        setCurrentStep(0);
+        setSuccessInfo(null);
+        setErrorMessage(`Local Analysis Failed: ${reason}`);
+        return;
+      }
+
       setCurrentStep(5);
       setStatusMessage('Local analysis complete!');
       setSuccessInfo({
         source: localPath,
-        flakyCount: response.data.detection.flaky_tests_count,
-        fixesCount: response.data.fixes.length,
+        flakyCount,
+        fixesCount,
         time: new Date().toLocaleTimeString()
       });
-      onAnalysisComplete(response.data);
+      onAnalysisComplete(data);
     } catch (err: any) {
       const detail = err.response?.data?.detail || err.message || 'Local analysis failed';
+      setCurrentStep(0);
+      setSuccessInfo(null);
       setErrorMessage(`Local Analysis Failed: ${detail}`);
     } finally {
       setLoading(false);

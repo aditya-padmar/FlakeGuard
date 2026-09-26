@@ -7,12 +7,73 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from backend.harness.runner import TestRunner
-from backend.harness.executor import TestExecutor
-from backend.harness.analyzer import TestAnalyzer
-from backend.bob.agent import BobAgent
-from backend.remediation.generator import FixGenerator
-from backend.auditor.auditor import Auditor
+
+# ── Canonical empty detection / metrics blocks used when a run produces no data ──
+
+def _empty_detection(total_runs: int = 0) -> Dict[str, Any]:
+    return {
+        "total_runs": total_runs,
+        "flaky_tests_count": 0,
+        "confidence": 0.0,
+        "flaky_tests": [],
+        "stable_tests": [],
+    }
+
+
+def _empty_metrics() -> Dict[str, Any]:
+    return {
+        "total_tests": 0,
+        "flaky_tests": 0,
+        "flakiness_rate": 0.0,
+        "active_quarantined": 0,
+        "fixes_applied": 0,
+        "avg_resolution_time": 0.0,
+    }
+
+
+def _error_response(
+    pipeline_id: str,
+    status: str,
+    source_type: str,
+    repo_url: Optional[str],
+    branch: Optional[str],
+    commit_sha: Optional[str],
+    started_at: str,
+    errors: List[Dict[str, str]],
+    validation: Optional[Dict[str, Any]] = None,
+    message: str = "",
+) -> Dict[str, Any]:
+    """Build a response that always satisfies the frontend schema."""
+    return {
+        "pipeline_id": pipeline_id,
+        "status": status,
+        "source_type": source_type,
+        "repository": repo_url or "",
+        "branch": branch or "main",
+        "commit_sha": commit_sha or "HEAD",
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "runs": 0,
+        "validation": validation or {},
+        "message": message,
+        "detection": _empty_detection(),
+        "classifications": [],
+        "fixes": [],
+        "quarantine_audit": {},
+        "quarantine_list": [],
+        "root_causes_chart": [],
+        "metrics": _empty_metrics(),
+        "errors": errors,
+    }
+
+
+from backend.harness.runner import TestRunner  # noqa: E402
+from backend.harness.executor import TestExecutor  # noqa: E402
+from backend.harness.analyzer import TestAnalyzer  # noqa: E402
+from backend.harness.validate import RepositoryValidator  # noqa: E402
+from backend.bob.agent import BobAgent  # noqa: E402
+from backend.remediation.generator import FixGenerator  # noqa: E402
+from backend.auditor.auditor import Auditor  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +111,85 @@ class PipelineService:
 
         started_at = datetime.now(timezone.utc).isoformat()
 
+        # Validate repository compatibility
+        validator = RepositoryValidator()
+        validation = validator.detect_pytest_compatibility(repo_path)
+        
+        logger.info(
+            f"Repository validation: compatible={validation['compatible']}, "
+            f"confidence={validation['confidence']:.1%}"
+        )
+        
+        if not validation["compatible"]:
+            msg = (
+                "Repository does not appear to be pytest-compatible. "
+                f"Confidence: {validation['confidence']:.1%}. "
+                f"Warnings: {', '.join(validation['warnings'])}"
+            )
+            return _error_response(
+                pipeline_id=pipeline_id,
+                status="no_tests",
+                source_type=source_type,
+                repo_url=repo_url or str(repo_path),
+                branch=branch,
+                commit_sha=commit_sha,
+                started_at=started_at,
+                errors=[{"code": "NO_TESTS", "message": msg}],
+                validation=validation,
+                message=msg,
+            )
+
         # Step 1: Detection (F1)
         runner = TestRunner(str(repo_path))
         executor = TestExecutor(runner)
-        test_runs = await executor.execute_multiple_runs(
-            num_runs=num_runs,
-            test_pattern=test_pattern
-        )
+        try:
+            test_runs = await executor.execute_multiple_runs(
+                num_runs=num_runs,
+                test_pattern=test_pattern
+            )
+        except RuntimeError as exc:
+            err_msg = str(exc)
+            # Distinguish "no tests collected" (exit code 5) from real failures
+            if "no tests collected" in err_msg.lower() or "exit code: 5" in err_msg.lower():
+                return _error_response(
+                    pipeline_id=pipeline_id,
+                    status="no_tests",
+                    source_type=source_type,
+                    repo_url=repo_url or str(repo_path),
+                    branch=branch,
+                    commit_sha=commit_sha,
+                    started_at=started_at,
+                    errors=[{"code": "NO_TESTS", "message": "No supported pytest tests were found."}],
+                    message="No supported pytest tests were found.",
+                )
+            return _error_response(
+                pipeline_id=pipeline_id,
+                status="error",
+                source_type=source_type,
+                repo_url=repo_url or str(repo_path),
+                branch=branch,
+                commit_sha=commit_sha,
+                started_at=started_at,
+                errors=[{"code": "DETECTION_FAILED", "message": err_msg}],
+                message=err_msg,
+            )
 
         analyzer = TestAnalyzer()
         detection = analyzer.analyze_runs(test_runs)
+
+        # No tests collected by pytest (all runs returned empty)
+        if detection.total_test_runs == 0 and not detection.flaky_tests:
+            return _error_response(
+                pipeline_id=pipeline_id,
+                status="no_tests",
+                source_type=source_type,
+                repo_url=repo_url or str(repo_path),
+                branch=branch,
+                commit_sha=commit_sha,
+                started_at=started_at,
+                errors=[{"code": "NO_TESTS", "message": "No supported pytest tests were found."}],
+                message="No supported pytest tests were found.",
+            )
 
         flaky_tests_data = [
             {
@@ -218,6 +348,7 @@ class PipelineService:
 
         return {
             "pipeline_id": pipeline_id,
+            "status": "success",
             "source_type": source_type,
             "repository": repo_url or str(repo_path),
             "branch": branch or "main",
@@ -229,12 +360,14 @@ class PipelineService:
                 "total_runs": detection.total_test_runs,
                 "flaky_tests_count": len(detection.flaky_tests),
                 "confidence": detection.detection_confidence,
-                "flaky_tests": flaky_tests_data
+                "flaky_tests": flaky_tests_data,
+                "stable_tests": list(detection.stable_tests),
             },
             "classifications": classifications_data,
             "fixes": fixes_data,
             "quarantine_audit": audit_data,
             "quarantine_list": quarantine_list,
             "root_causes_chart": root_causes_chart,
-            "metrics": metrics_summary
+            "metrics": metrics_summary,
+            "errors": [],
         }
