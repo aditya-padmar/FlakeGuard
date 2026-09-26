@@ -308,7 +308,7 @@ export const repositoryApi = {
     token?: string;
     num_runs?: number;
     test_pattern?: string;
-  }) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/clone-and-analyze`, data),
+  }, signal?: AbortSignal) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/clone-and-analyze`, data, { signal }),
 
   uploadAndAnalyze: (formData: FormData) =>
     axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/upload`, formData, {
