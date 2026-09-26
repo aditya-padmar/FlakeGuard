@@ -1,121 +1,165 @@
-"""Validation module for FlakeGuard acceptance gate."""
-import asyncio
+"""Repository validation and compatibility detection for FlakeGuard."""
+import logging
 from pathlib import Path
-import time
 from typing import Dict, List, Optional
 
-from backend.harness.analyzer import TestAnalyzer
-from backend.harness.executor import TestExecutor
-from backend.harness.runner import TestRunner
-
-HARDCODED_EXPECTED_FLAKY = [
-    "tests/test_timing.py::TestTimingIssues::test_worker_thread_race",
-    "tests/test_order.py::TestOrderingIssues::test_depends_on_retry_limit",
-    "tests/test_leakage.py::TestStateLeakage::test_expects_clean_inventory",
-    "tests/test_environment.py::TestEnvironmentIssues::test_region_dependent_totals",
-]
-
-HARDCODED_EXPECTED_STABLE = [
-    "tests/test_stable.py::TestStable::test_addition",
-    "tests/test_stable.py::TestStable::test_subtraction",
-    "tests/test_stable.py::TestStable::test_multiplication",
-    "tests/test_stable.py::TestStable::test_division",
-    "tests/test_stable.py::TestStable::test_divide_by_zero",
-    "tests/test_stable.py::TestStable::test_clear",
-    "tests/test_timing.py::TestTimingIssues::test_wait_is_deterministic_control",
-    "tests/test_leakage.py::TestStateLeakage::test_inventory_roundtrip_control",
-    "tests/test_environment.py::TestEnvironmentIssues::test_totals_lookup_control",
-]
+logger = logging.getLogger(__name__)
 
 
-async def run_single_validation_pass(
-    repo_path: Path,
-    pass_index: int,
-    num_runs: int = 10,
-    expected_flaky: Optional[List[str]] = None,
-    expected_stable: Optional[List[str]] = None,
-    base_seed: Optional[int] = None,
-) -> Dict[str, object]:
-    exp_flaky = set(expected_flaky or HARDCODED_EXPECTED_FLAKY)
-    exp_stable = set(expected_stable or HARDCODED_EXPECTED_STABLE)
+class RepositoryValidator:
+    """Validates if a repository is compatible with FlakeGuard analysis."""
 
-    seed = (base_seed if base_seed is not None else 42) + pass_index * 17
+    @staticmethod
+    def detect_pytest_compatibility(repo_path: Path) -> Dict[str, any]:
+        """
+        Detect if a repository appears to be pytest-compatible.
+        
+        Returns:
+            Dict with:
+                - compatible: bool
+                - confidence: float (0.0-1.0)
+                - indicators: List[str] of detected pytest indicators
+                - warnings: List[str] of potential issues
+                - test_files: List[Path] of discovered test files
+        """
+        repo_path = Path(repo_path).resolve()
+        
+        result = {
+            "compatible": False,
+            "confidence": 0.0,
+            "indicators": [],
+            "warnings": [],
+            "test_files": [],
+            "config_files": []
+        }
 
-    runner = TestRunner(repo_path)
-    analyzer = TestAnalyzer()
-    executor = TestExecutor(runner, analyzer)
+        if not repo_path.exists() or not repo_path.is_dir():
+            result["warnings"].append(f"Repository path does not exist: {repo_path}")
+            return result
 
-    start_time = time.perf_counter()
-    runs = await executor.execute_multiple_runs(
-        num_runs=num_runs,
-        batch_size=3,
-        base_seed=seed,
-    )
-    detection = analyzer.analyze_runs(runs)
-    elapsed = time.perf_counter() - start_time
+        # Check for pytest configuration files
+        config_indicators = {
+            "pytest.ini": 0.8,
+            "pyproject.toml": 0.4,
+            "setup.cfg": 0.3,
+            "tox.ini": 0.2
+        }
+        
+        for config_file, weight in config_indicators.items():
+            config_path = repo_path / config_file
+            if config_path.exists():
+                result["indicators"].append(f"Found {config_file}")
+                result["config_files"].append(str(config_path))
+                result["confidence"] += weight
+                
+                # Check for pytest-specific content
+                if config_file in ["pytest.ini", "pyproject.toml", "setup.cfg"]:
+                    try:
+                        content = config_path.read_text(encoding="utf-8")
+                        if "pytest" in content.lower():
+                            result["confidence"] += 0.1
+                    except Exception as e:
+                        logger.debug(f"Could not read {config_file}: {e}")
 
-    flagged_ids = {t.test_name for t in detection.flaky_tests}
-    stable_ids = set(detection.stable_tests)
+        # Check for test directories
+        test_dirs = ["tests", "test", "testing"]
+        for test_dir in test_dirs:
+            test_path = repo_path / test_dir
+            if test_path.exists() and test_path.is_dir():
+                result["indicators"].append(f"Found {test_dir}/ directory")
+                result["confidence"] += 0.3
+                break
 
-    # False positive: a test in expected_stable flagged flaky, or any test flagged not in expected_flaky
-    false_positives = sorted(list(flagged_ids - exp_flaky))
+        # Search for test files
+        test_patterns = [
+            "test_*.py",
+            "*_test.py",
+        ]
+        
+        for pattern in test_patterns:
+            test_files = list(repo_path.glob(f"**/{pattern}"))
+            if test_files:
+                result["test_files"].extend([str(f.relative_to(repo_path)) for f in test_files[:10]])
+                result["indicators"].append(f"Found {len(test_files)} files matching {pattern}")
+                result["confidence"] += 0.4
+                break
 
-    # False negative: an expected flaky test never flagged
-    false_negatives = sorted(list(exp_flaky - flagged_ids))
+        # Check for conftest.py (strong pytest indicator)
+        if list(repo_path.glob("**/conftest.py")):
+            result["indicators"].append("Found conftest.py")
+            result["confidence"] += 0.5
 
-    pass_ok = (len(false_positives) == 0 and len(false_negatives) == 0)
+        # Check for requirements files mentioning pytest
+        req_files = ["requirements.txt", "requirements-dev.txt", "dev-requirements.txt"]
+        for req_file in req_files:
+            req_path = repo_path / req_file
+            if req_path.exists():
+                try:
+                    content = req_path.read_text(encoding="utf-8")
+                    if "pytest" in content.lower():
+                        result["indicators"].append(f"pytest in {req_file}")
+                        result["confidence"] += 0.3
+                        break
+                except Exception as e:
+                    logger.debug(f"Could not read {req_file}: {e}")
 
-    return {
-        "iteration": pass_index + 1,
-        "seed": seed,
-        "seconds": round(elapsed, 2),
-        "total_runs": len(runs),
-        "flaky_found": sorted(list(flagged_ids)),
-        "stable_found": sorted(list(stable_ids)),
-        "false_positives": false_positives,
-        "false_negatives": false_negatives,
-        "detection_result": detection,
-        "passed": pass_ok,
-    }
-
-
-def validate(
-    repo_path: str | Path,
-    num_runs: int = 10,
-    expected_flaky: Optional[List[str]] = None,
-    expected_stable: Optional[List[str]] = None,
-    iterations: int = 3,
-    base_seed: int = 42,
-) -> Dict[str, object]:
-    """
-    Run `iterations` independent full detection passes and validate zero false positives / negatives.
-    """
-    path = Path(repo_path).resolve()
-    exp_flaky = expected_flaky or HARDCODED_EXPECTED_FLAKY
-    exp_stable = expected_stable or HARDCODED_EXPECTED_STABLE
-
-    results = []
-
-    async def _run_all():
-        for i in range(iterations):
-            iter_res = await run_single_validation_pass(
-                repo_path=path,
-                pass_index=i,
-                num_runs=num_runs,
-                expected_flaky=exp_flaky,
-                expected_stable=exp_stable,
-                base_seed=base_seed,
+        # Cap confidence at 1.0
+        result["confidence"] = min(result["confidence"], 1.0)
+        
+        # Determine compatibility
+        if result["confidence"] >= 0.5:
+            result["compatible"] = True
+        elif result["confidence"] > 0:
+            result["warnings"].append(
+                f"Low confidence ({result['confidence']:.1%}) - "
+                "repository may not be pytest-compatible"
             )
-            results.append(iter_res)
+        else:
+            result["warnings"].append(
+                "No pytest indicators found. Repository may not use pytest."
+            )
 
-    asyncio.run(_run_all())
+        logger.info(
+            f"Repository validation: compatible={result['compatible']}, "
+            f"confidence={result['confidence']:.1%}, "
+            f"indicators={len(result['indicators'])}"
+        )
 
-    all_passed = all(r["passed"] for r in results) and len(results) == iterations
+        return result
 
-    return {
-        "iterations": results,
-        "passed": all_passed,
-        "total_iterations": iterations,
-        "expected_flaky": exp_flaky,
-        "expected_stable": exp_stable,
-    }
+    @staticmethod
+    def check_python_environment(repo_path: Path) -> Dict[str, any]:
+        """
+        Check for Python environment indicators in repository.
+        
+        Returns:
+            Dict with python_version, virtualenv info, etc.
+        """
+        result = {
+            "has_python": False,
+            "python_files": [],
+            "virtualenv": None,
+            "warnings": []
+        }
+
+        repo_path = Path(repo_path).resolve()
+        
+        # Check for Python files
+        py_files = list(repo_path.glob("**/*.py"))
+        if py_files:
+            result["has_python"] = True
+            result["python_files"] = [str(f.relative_to(repo_path)) for f in py_files[:5]]
+
+        # Check for virtual environment indicators
+        venv_indicators = [".venv", "venv", "env", ".env"]
+        for venv_name in venv_indicators:
+            venv_path = repo_path / venv_name
+            if venv_path.exists() and venv_path.is_dir():
+                result["virtualenv"] = str(venv_path)
+                result["warnings"].append(
+                    f"Virtual environment detected at {venv_name}/. "
+                    "FlakeGuard uses its own Python environment."
+                )
+                break
+
+        return result

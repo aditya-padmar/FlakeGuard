@@ -10,6 +10,7 @@ from typing import Dict, Any, Optional, List
 from backend.harness.runner import TestRunner
 from backend.harness.executor import TestExecutor
 from backend.harness.analyzer import TestAnalyzer
+from backend.harness.validate import RepositoryValidator
 from backend.bob.agent import BobAgent
 from backend.remediation.generator import FixGenerator
 from backend.auditor.auditor import Auditor
@@ -49,6 +50,38 @@ class PipelineService:
             raise FileNotFoundError(f"Repository path does not exist: {repo_path}")
 
         started_at = datetime.now(timezone.utc).isoformat()
+
+        # Validate repository compatibility
+        validator = RepositoryValidator()
+        validation = validator.detect_pytest_compatibility(repo_path)
+        
+        logger.info(
+            f"Repository validation: compatible={validation['compatible']}, "
+            f"confidence={validation['confidence']:.1%}"
+        )
+        
+        if not validation["compatible"]:
+            return {
+                "pipeline_id": pipeline_id,
+                "status": "unsupported",
+                "repository": str(repo_path),
+                "source_type": source_type,
+                "repo_url": repo_url,
+                "branch": branch,
+                "started_at": started_at,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "validation": validation,
+                "message": (
+                    "Repository does not appear to be pytest-compatible. "
+                    f"Confidence: {validation['confidence']:.1%}. "
+                    f"Warnings: {', '.join(validation['warnings'])}"
+                ),
+                "flaky_tests": [],
+                "stable_tests": [],
+                "classifications": [],
+                "fixes": [],
+                "audit": {}
+            }
 
         # Step 1: Detection (F1)
         runner = TestRunner(str(repo_path))
