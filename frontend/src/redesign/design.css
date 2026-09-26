@@ -131,8 +131,10 @@ h1, h2, h3, h4, p { margin-top: 0; }
 .fg-skip-link:focus { top: 12px; }
 .fg-app { min-height: 100vh; overflow-x: clip; }
 .fg-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; width: 224px; overflow-y: auto; background: #0b1018b8; backdrop-filter: blur(24px); border-right: 1px solid var(--border); padding: 22px 12px 14px; display: flex; flex-direction: column; scrollbar-width: thin; }
-.fg-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 600; letter-spacing: -.6px; }
-.fg-brand-mark { display: grid; place-items: center; width: 30px; height: 32px; color: var(--cyan); filter: drop-shadow(0 0 9px #00f0ff35); }
+.fg-brand { display: inline-flex; align-items: center; gap: 9px; font-size: 19px; font-weight: 700; letter-spacing: -.5px; text-decoration: none; color: #ffffff; }
+.fg-brand-mark { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; }
+.fg-brand-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.45)); }
+.fg-brand-name { font-size: 19px; font-weight: 700; letter-spacing: -.4px; color: #f0fdf4; }
 .fg-brand-version { margin-left: 7px; padding: 2px 5px; font-size: 10px; font-weight: 500; letter-spacing: 0; vertical-align: middle; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; }
 .fg-sidebar-brand { padding-left: 8px; display: flex; align-items: center; justify-content: space-between; }
 .fg-workspace-switch { display: flex; align-items: center; gap: 9px; margin: 25px 4px 25px; padding: 10px 7px; border-bottom: 1px solid var(--border); }

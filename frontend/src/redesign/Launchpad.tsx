@@ -482,7 +482,7 @@ export default function Launchpad({ onRun, onDemo, error, busy }: LaunchpadProps
           </ShineBorder>
         ))}
       </section>
-      <footer className="fg-launch-footer"><span>FlakeGuard</span><span>Test reliability, with evidence.</span><a href="#interactive-demo">View the sample investigation <ArrowUpRight size={13} /></a></footer>
+      <footer className="fg-launch-footer"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><img src="/flakeguard-mark.png" alt="FlakeGuard" style={{ width: 18, height: 18, objectFit: 'contain' }} />FlakeGuard</span><span>Test reliability, with evidence.</span><a href="#interactive-demo">View the sample investigation <ArrowUpRight size={13} /></a></footer>
     </div>
   );
 }
