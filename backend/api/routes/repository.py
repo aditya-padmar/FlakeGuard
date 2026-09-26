@@ -66,6 +66,29 @@ class CreatePRRequest(BaseModel):
     base_branch: str = Field(default="main", description="Target base branch")
 
 
+class VerifyTokenRequest(BaseModel):
+    """Request payload to verify a GitHub Personal Access Token against a repository."""
+    repo_url: str = Field(..., description="GitHub repository URL")
+    token: str = Field(..., description="GitHub Personal Access Token")
+
+
+@router.post("/verify-token")
+async def verify_token(request: VerifyTokenRequest):
+    """
+    Verify GitHub Personal Access Token against a repository.
+    Returns validation status, permissions, and repo visibility.
+    """
+    try:
+        result = await GitService.verify_github_token(
+            repo_url=request.repo_url,
+            token=request.token
+        )
+        return result
+    except Exception as e:
+        logger.exception("GitHub token verification failed: %s", e)
+        return {"valid": False, "error": _safe_error(e)}
+
+
 @router.post("/clone-and-analyze")
 async def clone_and_analyze(request: CloneRequest):
     """

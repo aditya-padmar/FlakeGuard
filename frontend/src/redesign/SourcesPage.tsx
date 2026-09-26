@@ -12,7 +12,7 @@ export default function SourcesPage({ children }: { children: ReactNode }) {
       <footer className="fg-sources-help">
         <div className="fg-sources-help-copy">
           <span className="fg-sources-help-mark" aria-hidden="true"><GitBranch size={16} /></span>
-          <p className="fg-sources-help-text">Prefer a guided first look? <Link className="fg-sources-inline-link" to="/">Explore the launchpad <ArrowUpRight size={13} aria-hidden="true" /></Link></p>
+          <p className="fg-sources-help-text">Need help getting started? <Link className="fg-sources-inline-link" to="/guide">Explore the workspace guide <ArrowUpRight size={13} aria-hidden="true" /></Link></p>
         </div>
         <Link className="fg-sources-results-link" to="/dashboard">View current results <ArrowRight size={15} aria-hidden="true" /></Link>
       </footer>

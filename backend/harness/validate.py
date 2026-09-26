@@ -113,21 +113,24 @@ class RepositoryValidator:
         def find_files(exts: List[str], max_count: int = 20) -> List[Path]:
             return [path for ext in exts for path in files_by_extension.get(ext, [])][:max_count]
 
-        # C / C++ / Embedded (ESP32, CMake, Arduino, Make)
+        # C / C++ / Embedded (ESP32, CMake, Arduino, STM32, Make)
         c_configs = ["CMakeLists.txt", "Makefile", "sdkconfig", "platformio.ini", "sdkconfig.defaults"]
         c_found_configs = [c for c in c_configs if (repo_path / c).exists()]
-        c_files = find_files([".c", ".cpp", ".cc", ".h", ".hpp"])
+        c_files = find_files([".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".ino"])
         if c_found_configs or c_files:
-            is_embedded = any("sdkconfig" in c or "esp" in (repo_path / c).read_text(errors="ignore").lower() for c in c_found_configs if (repo_path / c).exists())
+            has_ino = any(f.suffix.lower() == ".ino" for f in c_files)
+            is_embedded = has_ino or any("sdkconfig" in c or "esp" in (repo_path / c).read_text(errors="ignore").lower() for c in c_found_configs if (repo_path / c).exists())
             result["compatible"] = True
             result["primary_language"] = "c/c++"
-            result["framework"] = "cmake/esp-idf" if is_embedded else ("cmake" if "CMakeLists.txt" in c_found_configs else "make/c")
+            result["framework"] = "arduino/embedded" if has_ino else ("cmake/esp-idf" if is_embedded else ("cmake" if "CMakeLists.txt" in c_found_configs else "make/c"))
             result["mode"] = "static_audit"
-            result["confidence"] = 0.9 if c_found_configs else 0.7
+            result["confidence"] = 0.9 if c_found_configs else (0.8 if has_ino else 0.7)
             result["indicators"].extend([f"Found {c}" for c in c_found_configs])
-            if is_embedded:
+            if has_ino:
+                result["indicators"].append("Detected Arduino / Embedded sketch files (.ino)")
+            elif is_embedded:
                 result["indicators"].append("Detected ESP32 / embedded firmware configuration")
-            result["indicators"].append(f"Found {len(c_files)} C/C++ source files")
+            result["indicators"].append(f"Found {len(c_files)} C/C++/Embedded source files")
             result["config_files"] = [str(repo_path / c) for c in c_found_configs]
             result["test_files"] = [str(f.relative_to(repo_path)) for f in c_files[:10]]
             return result

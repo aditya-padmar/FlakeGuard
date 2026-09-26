@@ -90,6 +90,331 @@
 .ingestion-card button:focus-visible, .ingestion-card input[type='range']:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 @keyframes ingestion-spin { to { transform: rotate(360deg); } }
 @keyframes ingestion-pulse { 50% { box-shadow: 0 0 0 4px #10b98118; } }
+
+/* ── Repository Visibility Segmented Control ─────────────────────────────── */
+.ingestion-card .visibility-segmented-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ingestion-card .visibility-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ingestion-card .section-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #c9d3e1;
+}
+.ingestion-card .visibility-subtext {
+  font-size: 12px;
+  color: #7e8ba0;
+}
+.ingestion-card .visibility-segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ingestion-card .visibility-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(11, 16, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 14px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+.ingestion-card .visibility-btn:hover:not(:disabled) {
+  background: rgba(18, 25, 36, 0.9);
+  border-color: rgba(0, 240, 255, 0.25);
+  transform: translateY(-1px);
+}
+.ingestion-card .visibility-btn.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border-color: rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 20px -5px rgba(0, 240, 255, 0.2), inset 0 0 0 1px rgba(0, 240, 255, 0.2);
+}
+.ingestion-card .vis-icon {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+.ingestion-card .visibility-btn.active .vis-icon {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: rgba(0, 240, 255, 0.3);
+}
+.ingestion-card .vis-meta {
+  flex: 1;
+  min-width: 0;
+}
+.ingestion-card .vis-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e6edf5;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ingestion-card .vis-desc {
+  font-size: 11.5px;
+  color: #8da0b5;
+  line-height: 1.4;
+}
+.ingestion-card .vis-badge-active {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: rgba(0, 240, 255, 0.15);
+  color: #7df5ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  margin-left: auto;
+}
+
+/* ── Private Authentication Card ─────────────────────────────────────────── */
+.ingestion-card .private-auth-card {
+  background: rgba(11, 16, 25, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 9px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: ingestion-fade-in 0.25s ease-out;
+}
+@keyframes ingestion-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ingestion-card .private-auth-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ingestion-card .token-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6edf5;
+}
+.ingestion-card .required-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  letter-spacing: 0.05em;
+}
+.ingestion-card .token-helper-link {
+  font-size: 12px;
+  color: #75f5ff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s, text-decoration 0.15s;
+}
+.ingestion-card .token-helper-link:hover {
+  color: #a5f9ff;
+  text-decoration: underline;
+}
+.ingestion-card .token-desc {
+  font-size: 12px;
+  color: #8fa1b8;
+  margin: 0;
+  line-height: 1.5;
+}
+.ingestion-card .scope-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #a5e8ff;
+}
+.ingestion-card .token-input-bar {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.ingestion-card .flex-grow {
+  flex: 1;
+}
+.ingestion-card .input-key-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #64748b;
+  pointer-events: none;
+  z-index: 1;
+}
+.ingestion-card .private-auth-card .input-with-action input {
+  padding-left: 36px;
+}
+.ingestion-card .btn-verify-token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: rgba(0, 240, 255, 0.1);
+  color: #75f5ff;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 7px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.ingestion-card .btn-verify-token:hover:not(:disabled) {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: rgba(0, 240, 255, 0.6);
+  box-shadow: 0 0 14px -3px rgba(0, 240, 255, 0.3);
+}
+.ingestion-card .btn-verify-token:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ingestion-card .spinner-sm {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(117, 245, 255, 0.3);
+  border-top-color: #75f5ff;
+  border-radius: 50%;
+  animation: ingestion-spin 0.8s linear infinite;
+}
+.ingestion-card .token-format-notice {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: #facc15;
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+.ingestion-card .token-status-pill {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ingestion-card .token-status-pill.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+}
+.ingestion-card .token-status-pill.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+.ingestion-card .status-indicator-icon {
+  font-size: 14px;
+  margin-top: 1px;
+}
+.ingestion-card .status-meta {
+  flex: 1;
+}
+.ingestion-card .status-headline {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.ingestion-card .status-subline {
+  font-size: 11.5px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.ingestion-card .perm-chips {
+  display: inline-flex;
+  gap: 6px;
+}
+.ingestion-card .perm-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Error Alert Quick-Switch ────────────────────────────────────────────── */
+.ingestion-card .alert-action-line {
+  margin-top: 9px;
+}
+.ingestion-card .btn-switch-to-private {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 240, 255, 0.12);
+  color: #7df5ff;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ingestion-card .btn-switch-to-private:hover {
+  background: rgba(0, 240, 255, 0.22);
+  border-color: rgba(0, 240, 255, 0.6);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+/* ── Bridge Notice Banner ─────────────────────────────────────────────────── */
+.ingestion-card .bridge-notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #fbd38d;
+  margin-bottom: 20px;
+  animation: ingestion-fade-in 0.25s ease-out;
+}
+.ingestion-card .bridge-notice-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.ingestion-card .bridge-notice-content strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .ingestion-card .source-tab:hover { color: #d8e6f5; background: #ffffff04; }
   .ingestion-card .source-tab.active:hover { color: #75f5ff; background: #00f0ff0b; }
@@ -104,6 +429,9 @@
   .ingestion-card .header-titles h2 { font-size: 19px; }
   .ingestion-card .source-tabs { padding: 6px 10px 0; gap: 2px; }
   .ingestion-card .source-tab { padding: 11px 12px; }
+  .ingestion-card .visibility-segmented-control { grid-template-columns: 1fr; }
+  .ingestion-card .token-input-bar { flex-direction: column; }
+  .ingestion-card .btn-verify-token { height: 42px; }
   .ingestion-card .form-row { flex-direction: column; gap: 20px; }
   .ingestion-card .form-row > .form-group { width: 100%; }
   .ingestion-card .input-prefix { font-size: 10px; padding: 9px 7px; }

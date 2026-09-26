@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { repositoryApi, type PipelineAnalysisResult } from '../services/api';
+import { repositoryApi, type PipelineAnalysisResult, type TokenVerificationResult } from '../services/api';
 import './RepositoryIngestion.css';
 
 interface AnalysisRequest {
@@ -33,21 +34,61 @@ export default function RepositoryIngestion({
   onAnalysisComplete,
   activeSourceInfo
 }: RepositoryIngestionProps) {
-  const [activeTab, setActiveTab] = useState<'github' | 'upload' | 'local'>('github');
+  const [searchParams] = useSearchParams();
+  const repoParam = searchParams.get('repo');
+  const visibilityParam = searchParams.get('visibility');
+  const branchParam = searchParams.get('branch');
+
+  const normalizeUrlParam = (raw: string | null) => {
+    if (!raw) return '';
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://github.com/${trimmed.replace(/^github\.com\//, '')}`;
+  };
+
+  const [activeTab, setActiveTab] = useState<'github' | 'upload'>('github');
   
   // GitHub state
-  const [repoUrl, setRepoUrl] = useState('https://github.com/aditya-padmar/FlakeGuard');
-  const [branch, setBranch] = useState('main');
+  const [repoUrl, setRepoUrl] = useState(() => normalizeUrlParam(repoParam));
+  const [branch, setBranch] = useState(branchParam?.trim() || 'main');
+  const [repoVisibility, setRepoVisibility] = useState<'public' | 'private'>(
+    visibilityParam === 'private' ? 'private' : 'public'
+  );
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
+  const [verifyingToken, setVerifyingToken] = useState(false);
+  const [tokenVerificationResult, setTokenVerificationResult] = useState<TokenVerificationResult | null>(null);
+  const tokenInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const r = searchParams.get('repo');
+    const v = searchParams.get('visibility');
+    const b = searchParams.get('branch');
+    if (r !== null) {
+      setRepoUrl(normalizeUrlParam(r));
+    }
+    if (b !== null && b.trim()) {
+      setBranch(b.trim());
+    }
+    if (v === 'private') {
+      setRepoVisibility('private');
+      const timer = setTimeout(() => {
+        if (!r && !repoUrl) {
+          const urlInput = document.getElementById('repo-url') as HTMLInputElement | null;
+          urlInput?.focus();
+        } else {
+          tokenInputRef.current?.focus();
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    } else if (v === 'public') {
+      setRepoVisibility('public');
+    }
+  }, [searchParams]);
 
   // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-
-  // Local state
-  const [localPath, setLocalPath] = useState('sample-repo');
-  const [availableSources, setAvailableSources] = useState<Array<{ id: string; name: string; path: string; description: string }>>([]);
 
   // Shared execution settings
   const [numRuns, setNumRuns] = useState(5);
@@ -72,18 +113,9 @@ export default function RepositoryIngestion({
   // The per-setup signal also rejects responses from StrictMode's discarded mount.
   useEffect(() => {
     mounted.current = true;
-    const sourceController = new AbortController();
-    repositoryApi.getSources(sourceController.signal)
-      .then(res => {
-        if (!sourceController.signal.aborted && res.data?.sources) {
-          setAvailableSources(res.data.sources);
-        }
-      })
-      .catch(() => {});
     return () => {
       mounted.current = false;
       generation.current += 1;
-      sourceController.abort();
       const request = activeRequest.current;
       if (request) { request.controller.abort(); clearRequestTimers(request); }
       activeRequest.current = null;
@@ -116,13 +148,73 @@ export default function RepositoryIngestion({
     }
   };
 
+  const isTokenFormatRecognized = (tok: string) => {
+    const t = tok.trim();
+    return !t || t.startsWith('ghp_') || t.startsWith('github_pat_');
+  };
+
+  const handleVerifyToken = async () => {
+    let cleanUrl = repoUrl.trim();
+    if (!cleanUrl) {
+      setErrorMessage('Please enter a GitHub repository URL first.');
+      return;
+    }
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://github.com/${cleanUrl.replace(/^github\.com\//, '')}`;
+    }
+    if (!token.trim()) {
+      setErrorMessage('Please enter a GitHub Personal Access Token to verify.');
+      tokenInputRef.current?.focus();
+      return;
+    }
+    setVerifyingToken(true);
+    setTokenVerificationResult(null);
+    setErrorMessage(null);
+    try {
+      const res = await repositoryApi.verifyToken({
+        repo_url: cleanUrl,
+        token: token.trim()
+      });
+      setTokenVerificationResult(res.data);
+      if (res.data.valid && res.data.default_branch && (!branch || branch === 'main')) {
+        setBranch(res.data.default_branch);
+      }
+    } catch (err: unknown) {
+      setTokenVerificationResult({
+        valid: false,
+        error: analysisError(err, 'Token verification request failed.')
+      });
+    } finally {
+      setVerifyingToken(false);
+    }
+  };
+
   const handleGitHubAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeRequest.current) return;
-    if (!repoUrl.trim()) {
+    let cleanUrl = repoUrl.trim();
+    if (!cleanUrl) {
       setErrorMessage('Please enter a valid GitHub repository URL.');
       return;
     }
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = `https://github.com/${cleanUrl.replace(/^github\.com\//, '')}`;
+    }
+
+    // Required checks for private repository mode
+    if (repoVisibility === 'private') {
+      if (!token.trim()) {
+        setErrorMessage('A GitHub Personal Access Token is required to clone and analyze a private repository.');
+        tokenInputRef.current?.focus();
+        return;
+      }
+      if (token.trim().length < 15) {
+        setErrorMessage('The Personal Access Token appears too short. Please provide a valid GitHub token (e.g. ghp_... or github_pat_...).');
+        tokenInputRef.current?.focus();
+        return;
+      }
+    }
+
     const request = beginRequest();
     if (!request) return;
 
@@ -149,9 +241,9 @@ export default function RepositoryIngestion({
 
     try {
       const response = await repositoryApi.cloneAndAnalyze({
-        repo_url: repoUrl.trim(),
+        repo_url: cleanUrl,
         branch: branch.trim() || undefined,
-        token: token.trim() || undefined,
+        token: repoVisibility === 'private' ? token.trim() : (token.trim() || undefined),
         num_runs: numRuns,
         test_pattern: testPattern.trim() || undefined
       }, request.controller.signal);
@@ -254,55 +346,6 @@ export default function RepositoryIngestion({
     }
   };
 
-  const handleLocalAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const request = beginRequest();
-    if (!request) return;
-    setLoading(true);
-    setErrorMessage(null);
-    setSuccessInfo(null);
-    setCurrentStep(2);
-    setStatusMessage(`Executing ${numRuns} test iterations on local suite: ${localPath}...`);
-
-    try {
-      const response = await repositoryApi.analyzeLocal({
-        repo_path: localPath,
-        num_runs: numRuns,
-        test_pattern: testPattern.trim() || undefined
-      }, request.controller.signal);
-      if (!isCurrentRequest(request)) return;
-
-      const data = response.data;
-      const flakyCount = data.detection?.flaky_tests_count ?? 0;
-      const fixesCount = data.fixes?.length ?? 0;
-      if (data.status === 'no_tests' || data.status === 'unsupported') {
-        const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
-        setCurrentStep(0);
-        setSuccessInfo(null);
-        setErrorMessage(`No Tests Found: ${reason}`);
-        return;
-      }
-      if (data.status === 'error') {
-        const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
-        setCurrentStep(0);
-        setSuccessInfo(null);
-        setErrorMessage(`Local Analysis Failed: ${reason}`);
-        return;
-      }
-      setCurrentStep(5);
-      setStatusMessage('Local analysis complete!');
-      setSuccessInfo({ source: localPath, flakyCount, fixesCount, time: new Date().toLocaleTimeString() });
-      onAnalysisComplete(data);
-    } catch (cause: unknown) {
-      if (!isCurrentRequest(request) || axios.isCancel(cause)) return;
-      setCurrentStep(0);
-      setSuccessInfo(null);
-      setErrorMessage(`Local Analysis Failed: ${analysisError(cause, 'Local analysis failed')}`);
-    } finally {
-      finishRequest(request);
-    }
-  };
-
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -326,7 +369,7 @@ export default function RepositoryIngestion({
           <div className="badge-live-tag">F1 ➔ F2 ➔ F3 ➔ F4 Live Pipeline</div>
           <h2>Repository Ingestion & Flaky Analysis Engine</h2>
           <p className="subtitle">
-            Clone remote GitHub repositories, upload custom test archives, or run the built-in local suite.
+            Clone remote GitHub repositories or upload custom test suites and archives for automated analysis.
           </p>
         </div>
 
@@ -360,22 +403,20 @@ export default function RepositoryIngestion({
           <span className="tab-text">Upload Test Suite</span>
           <span className="tab-badge">Polyglot / Archive</span>
         </button>
-
-        <button
-          type="button"
-          className={`source-tab ${activeTab === 'local' ? 'active' : ''}`}
-          onClick={() => setActiveTab('local')}
-        >
-          <span className="tab-icon">💻</span>
-          <span className="tab-text">Local / Sample Repo</span>
-          <span className="tab-badge">Instant</span>
-        </button>
       </div>
 
       {/* Form Content */}
       <div className="ingestion-body">
         {activeTab === 'github' && (
           <form onSubmit={handleGitHubAnalyze} className="ingestion-form">
+            {searchParams.get('repo') && repoVisibility === 'private' && (
+              <div className="bridge-notice-banner">
+                <span className="bridge-notice-icon">🔑</span>
+                <div className="bridge-notice-content">
+                  <strong>Private repository linked from Launchpad:</strong> Please provide your GitHub Personal Access Token below to authorize cloning and begin test discovery.
+                </div>
+              </div>
+            )}
             <div className="form-row">
               <div className="form-group flex-2">
                 <label htmlFor="repo-url">GitHub Repository URL</label>
@@ -385,21 +426,11 @@ export default function RepositoryIngestion({
                     id="repo-url"
                     type="text"
                     value={repoUrl.replace(/^https?:\/\/github\.com\//, '')}
-                    onChange={(e) => setRepoUrl(`https://github.com/${e.target.value.replace(/^https?:\/\/github\.com\//, '')}`)}
-                    placeholder="owner/repository"
+                    onChange={(e) => setRepoUrl(e.target.value.trim() ? `https://github.com/${e.target.value.replace(/^https?:\/\/github\.com\//, '')}` : '')}
+                    placeholder="owner/repository (e.g. your-org/your-repo)"
                     required
                     disabled={loading}
                   />
-                </div>
-                <div className="quick-presets">
-                  <span className="preset-label">Quick test repos:</span>
-                  <button
-                    type="button"
-                    className="preset-chip"
-                    onClick={() => { setRepoUrl('https://github.com/aditya-padmar/FlakeGuard'); setBranch('main'); }}
-                  >
-                    aditya-padmar/FlakeGuard
-                  </button>
                 </div>
               </div>
 
@@ -416,31 +447,163 @@ export default function RepositoryIngestion({
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group flex-2">
-                <div className="label-with-hint">
-                  <label htmlFor="github-token">GitHub Personal Access Token (Optional)</label>
-                  <span className="hint-text">Required for private repos or 1-click PR creation</span>
+            {/* Repository Visibility Segmented Control */}
+            <div className="visibility-segmented-wrapper">
+              <div className="visibility-label-row">
+                <label className="section-label">Repository Access & Visibility</label>
+                <span className="visibility-subtext">Choose access mode for cloning and authentication</span>
+              </div>
+              <div className="visibility-segmented-control" role="radiogroup" aria-label="Repository Visibility">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={repoVisibility === 'public'}
+                  className={`visibility-btn ${repoVisibility === 'public' ? 'active' : ''}`}
+                  onClick={() => {
+                    setRepoVisibility('public');
+                    setErrorMessage(null);
+                    setTokenVerificationResult(null);
+                  }}
+                  disabled={loading}
+                >
+                  <span className="vis-icon">🌐</span>
+                  <div className="vis-meta">
+                    <div className="vis-title">Public Repository</div>
+                    <div className="vis-desc">Open-source • No token needed</div>
+                  </div>
+                  {repoVisibility === 'public' && <span className="vis-badge-active">Selected</span>}
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={repoVisibility === 'private'}
+                  className={`visibility-btn ${repoVisibility === 'private' ? 'active' : ''}`}
+                  onClick={() => {
+                    setRepoVisibility('private');
+                    setErrorMessage(null);
+                    setTimeout(() => tokenInputRef.current?.focus(), 60);
+                  }}
+                  disabled={loading}
+                >
+                  <span className="vis-icon">🔒</span>
+                  <div className="vis-meta">
+                    <div className="vis-title">Private Repository</div>
+                    <div className="vis-desc">Encrypted • Requires GitHub Personal Access Token</div>
+                  </div>
+                  {repoVisibility === 'private' && <span className="vis-badge-active">Selected</span>}
+                </button>
+              </div>
+            </div>
+
+            {/* Private Repository Authentication Card */}
+            {repoVisibility === 'private' && (
+              <div className="private-auth-card">
+                <div className="private-auth-header">
+                  <div className="label-with-hint">
+                    <label htmlFor="github-token" className="token-label">
+                      <span className="required-badge">REQUIRED</span>
+                      GitHub Personal Access Token (PAT)
+                    </label>
+                    <a
+                      href="https://github.com/settings/tokens/new?scopes=repo&description=FlakeGuard%20Analysis"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="token-helper-link"
+                    >
+                      Generate Token on GitHub ↗
+                    </a>
+                  </div>
+                  <p className="token-desc">
+                    Requires <code className="scope-code">repo</code> scope (classic) or <code className="scope-code">Contents: Read</code> (fine-grained) to clone private test suites.
+                  </p>
                 </div>
-                <div className="input-with-action">
-                  <input
-                    id="github-token"
-                    type={showToken ? 'text' : 'password'}
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    disabled={loading}
-                  />
+
+                <div className="token-input-bar">
+                  <div className="input-with-action flex-grow">
+                    <span className="input-key-prefix">🔑</span>
+                    <input
+                      ref={tokenInputRef}
+                      id="github-token"
+                      type={showToken ? 'text' : 'password'}
+                      value={token}
+                      onChange={(e) => {
+                        setToken(e.target.value);
+                        setTokenVerificationResult(null);
+                        setErrorMessage(null);
+                      }}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_xxxxxxxxxxxxxxxxxxxx"
+                      disabled={loading || verifyingToken}
+                      required
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      className="toggle-token-btn"
+                      onClick={() => setShowToken(!showToken)}
+                      tabIndex={-1}
+                    >
+                      {showToken ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    className="toggle-token-btn"
-                    onClick={() => setShowToken(!showToken)}
+                    className="btn-verify-token"
+                    onClick={handleVerifyToken}
+                    disabled={loading || verifyingToken || !token.trim() || !repoUrl.trim()}
+                    title={!repoUrl.trim() ? 'Enter Repository URL first' : 'Verify token credentials with GitHub'}
                   >
-                    {showToken ? 'Hide' : 'Show'}
+                    {verifyingToken ? (
+                      <>
+                        <span className="spinner-sm"></span>
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>⚡ Verify Access</span>
+                      </>
+                    )}
                   </button>
                 </div>
-              </div>
 
+                {/* Token format hint */}
+                {token.trim().length > 0 && !isTokenFormatRecognized(token) && (
+                  <div className="token-format-notice">
+                    <span className="notice-icon">ℹ️</span>
+                    <span>GitHub PATs typically start with <code className="scope-code">ghp_</code> (classic) or <code className="scope-code">github_pat_</code> (fine-grained).</span>
+                  </div>
+                )}
+
+                {/* Verification result status */}
+                {tokenVerificationResult && (
+                  <div className={`token-status-pill ${tokenVerificationResult.valid ? 'success' : 'error'}`}>
+                    <span className="status-indicator-icon">{tokenVerificationResult.valid ? '✅' : '❌'}</span>
+                    <div className="status-meta">
+                      <div className="status-headline">
+                        {tokenVerificationResult.valid ? 'Token Verified & Read Access Confirmed' : 'Verification Failed'}
+                      </div>
+                      <div className="status-subline">
+                        {tokenVerificationResult.valid ? (
+                          <>
+                            <span>Repository: <strong>{tokenVerificationResult.full_name || tokenVerificationResult.repo}</strong></span>
+                            <span className="perm-chips">
+                              <span className="perm-chip">Pull: {tokenVerificationResult.permissions?.pull ? '✓' : '✗'}</span>
+                              <span className="perm-chip">Push: {tokenVerificationResult.permissions?.push ? '✓' : '✗'}</span>
+                              <span className="perm-chip">Admin: {tokenVerificationResult.permissions?.admin ? '✓' : '✗'}</span>
+                            </span>
+                          </>
+                        ) : (
+                          tokenVerificationResult.error || 'Failed to authenticate token with GitHub.'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="form-row">
               <div className="form-group flex-1">
                 <label htmlFor="runs-slider">Execution Passes: <strong>{numRuns} runs</strong></label>
                 <input
@@ -564,69 +727,6 @@ export default function RepositoryIngestion({
           </form>
         )}
 
-        {activeTab === 'local' && (
-          <form onSubmit={handleLocalAnalyze} className="ingestion-form">
-            <div className="form-row">
-              <div className="form-group flex-2">
-                <label htmlFor="local-path-select">Pre-configured Local Repositories</label>
-                <div className="preset-grid">
-                  {availableSources.map((src) => (
-                    <div
-                      key={src.id}
-                      className={`preset-card ${localPath === src.path ? 'selected' : ''}`}
-                      onClick={() => setLocalPath(src.path)}
-                    >
-                      <div className="card-header">
-                        <strong>{src.name}</strong>
-                      </div>
-                      <p className="card-desc">{src.description}</p>
-                      <code className="card-path">{src.path}</code>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group flex-1">
-                <label htmlFor="custom-local-path">Or Custom Directory Path</label>
-                <input
-                  id="custom-local-path"
-                  type="text"
-                  value={localPath}
-                  onChange={(e) => setLocalPath(e.target.value)}
-                  placeholder="sample-repo"
-                  disabled={loading}
-                />
-                <div style={{ marginTop: '1rem' }}>
-                  <label>Execution Passes: <strong>{numRuns} runs</strong></label>
-                  <input
-                    type="range"
-                    min="2"
-                    max="10"
-                    value={numRuns}
-                    onChange={(e) => setNumRuns(Number(e.target.value))}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="action-row">
-              <button type="submit" className="btn-run-pipeline" disabled={loading}>
-                {loading ? (
-                  <>
-                    <span className="spinner"></span>
-                    <span>Analyzing Local Suite...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚡ Run Analysis on {localPath}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
         {/* Live Stepper & Feedback */}
         {loading && (
           <div className="pipeline-stepper-box">
@@ -672,7 +772,24 @@ export default function RepositoryIngestion({
         {errorMessage && (
           <div className="ingestion-alert error">
             <span className="alert-icon">⚠️</span>
-            <div className="alert-text">{errorMessage}</div>
+            <div className="alert-text">
+              <div className="alert-message-line">{errorMessage}</div>
+              {repoVisibility === 'public' && errorMessage.toLowerCase().includes('private') && (
+                <div className="alert-action-line">
+                  <button
+                    type="button"
+                    className="btn-switch-to-private"
+                    onClick={() => {
+                      setRepoVisibility('private');
+                      setErrorMessage(null);
+                      setTimeout(() => tokenInputRef.current?.focus(), 60);
+                    }}
+                  >
+                    🔒 Switch to Private Repository & Enter Token
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

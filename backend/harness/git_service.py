@@ -6,6 +6,7 @@ import zipfile
 import tarfile
 import uuid
 import subprocess
+import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
@@ -28,14 +29,18 @@ class GitService:
     @staticmethod
     def parse_github_url(url: str) -> Optional[Tuple[str, str]]:
         """
-        Extract (owner, repo) from GitHub URL.
+        Extract (owner, repo) from GitHub URL or shorthand.
         Accepts:
+            owner/repo
             https://github.com/owner/repo
             https://github.com/owner/repo.git
             github.com/owner/repo
             git@github.com:owner/repo.git
         """
         url = url.strip()
+        shorthand = re.match(r"^([\w.-]+)/([\w.-]+?)(?:\.git)?/?$", url)
+        if shorthand and not url.startswith("http") and not url.startswith("git@"):
+            return shorthand.group(1), shorthand.group(2)
         pattern = r"(?:https?://)?(?:www\.)?github\.com[:/](?P<owner>[\w.-]+)/(?P<repo>[\w.-]+?)(?:\.git)?/?$"
         match = re.match(pattern, url, re.IGNORECASE)
         if match:
@@ -68,38 +73,76 @@ class GitService:
         else:
             auth_url = f"https://github.com/{owner}/{repo}.git"
 
-        cmd = ["git", "clone", f"--depth={depth}"]
+        # Explicitly disable credential helpers and terminal prompts so host OS credentials
+        # (e.g. Windows Git Credential Manager) are not silently used for private repos.
+        base_cmd = [
+            "git",
+            "-c", "credential.helper=",
+            "-c", "core.askPass=",
+            "clone",
+            f"--depth={depth}"
+        ]
+
+        cmd = list(base_cmd)
         if branch and branch.strip():
             cmd.extend(["--branch", branch.strip()])
         cmd.extend([auth_url, str(destination)])
+
+        git_env = os.environ.copy()
+        git_env["GIT_TERMINAL_PROMPT"] = "0"
+        git_env["GIT_ASKPASS"] = "echo"
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=120
+                timeout=120,
+                env=git_env
             )
 
             # Smart branch fallback: If branch was specified (e.g. 'main') but does not exist on remote
             # (e.g. repo uses 'master'), retry without --branch to clone the remote's default HEAD branch
             if result.returncode != 0 and branch and ("Remote branch" in result.stderr or "not found" in result.stderr.lower()):
-                logger.warning(
-                    "Branch '%s' not found for %s/%s. Retrying clone with upstream default branch...",
-                    branch, owner, repo
+                # Only retry branch fallback if the error is not an authentication/private repo issue
+                stderr_lower = result.stderr.lower()
+                is_auth_issue = any(
+                    err_hint in stderr_lower
+                    for err_hint in ("could not read username", "authentication failed", "terminal prompts disabled", "repository not found", "fatal: repository")
                 )
-                if destination.exists():
-                    shutil.rmtree(destination, ignore_errors=True)
-                fallback_cmd = ["git", "clone", f"--depth={depth}", auth_url, str(destination)]
-                result = subprocess.run(
-                    fallback_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
+                if not is_auth_issue:
+                    logger.warning(
+                        "Branch '%s' not found for %s/%s. Retrying clone with upstream default branch...",
+                        branch, owner, repo
+                    )
+                    if destination.exists():
+                        shutil.rmtree(destination, ignore_errors=True)
+                    fallback_cmd = list(base_cmd) + [auth_url, str(destination)]
+                    result = subprocess.run(
+                        fallback_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                        env=git_env
+                    )
 
             if result.returncode != 0:
                 sanitized_stderr = result.stderr.replace(token or "", "[REDACTED]") if token else result.stderr
+                stderr_lower = sanitized_stderr.lower()
+                if (
+                    "could not read username" in stderr_lower
+                    or "authentication failed" in stderr_lower
+                    or "terminal prompts disabled" in stderr_lower
+                    or "repository not found" in stderr_lower
+                ):
+                    if not token or not token.strip():
+                        raise RuntimeError(
+                            f"Repository '{owner}/{repo}' is private or does not exist. Please provide a GitHub Personal Access Token."
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Authentication failed for '{owner}/{repo}'. Please check your Personal Access Token permissions."
+                        )
                 raise RuntimeError(f"Git clone failed: {sanitized_stderr.strip()}")
 
             # Extract current commit and branch
@@ -248,9 +291,10 @@ class GitService:
             "**/*_test.go",
             # Java / Kotlin
             "**/*Test.java", "**/*Tests.java", "**/*TestCase.java", "**/*Test.kt",
-            # C / C++
+            # C / C++ / Embedded (Arduino / ESP32 / STM32)
             "**/test_*.c", "**/test_*.cpp", "**/*_test.c", "**/*_test.cpp",
             "**/test*.c", "**/test*.cpp", "**/tests/**/*.c", "**/tests/**/*.cpp",
+            "**/*_DUT*.ino", "**/*test*.ino", "**/*DUT*.ino", "**/*.ino",
             # Rust
             "**/tests/**/*.rs", "**/*_test.rs"
         ]
@@ -268,7 +312,7 @@ class GitService:
         # If no explicit test files were discovered, fall back to discovering primary code files
         if not found:
             code_patterns = [
-                "**/*.c", "**/*.cpp", "**/*.cc", "**/*.h", "**/*.hpp",
+                "**/*.c", "**/*.cpp", "**/*.cc", "**/*.h", "**/*.hpp", "**/*.ino",
                 "**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx",
                 "**/*.py", "**/*.go", "**/*.java", "**/*.rs"
             ]
@@ -307,6 +351,165 @@ class GitService:
             return res.stdout.strip() or "main"
         except Exception:
             return "main"
+
+    @classmethod
+    async def verify_github_token(
+        cls,
+        repo_url: str,
+        token: str
+    ) -> Dict[str, Any]:
+        """
+        Verify that a GitHub Personal Access Token is valid and has access to the specified repository.
+        Uses Git's native protocol (git ls-remote) as the authoritative check, combined with
+        GitHub REST API for rich repository metadata.
+        """
+        parsed = cls.parse_github_url(repo_url)
+        if not parsed:
+            return {
+                "valid": False,
+                "error": f"Invalid GitHub URL: '{repo_url}'. Expected format: owner/repo or https://github.com/owner/repo"
+            }
+        owner, repo = parsed
+        token_str = (token or "").strip()
+        if not token_str:
+            return {
+                "valid": False,
+                "error": "Personal Access Token cannot be empty."
+            }
+
+        # 1. Authoritative Git protocol test using git ls-remote
+        auth_url = f"https://x-access-token:{token_str}@github.com/{owner}/{repo}.git"
+        git_env = os.environ.copy()
+        git_env["GIT_TERMINAL_PROMPT"] = "0"
+        git_env["GIT_ASKPASS"] = "echo"
+
+        cmd = [
+            "git",
+            "-c", "credential.helper=",
+            "-c", "core.askPass=",
+            "ls-remote",
+            "--heads",
+            auth_url
+        ]
+
+        def _run_git_check():
+            return subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                env=git_env
+            )
+
+        git_res = None
+        try:
+            git_res = await asyncio.to_thread(_run_git_check)
+        except Exception as e:
+            logger.warning("Git ls-remote subprocess check encountered error: %s", e)
+
+        if git_res is not None and git_res.returncode == 0:
+            # Git successfully authenticated and confirmed access to the repo!
+            branches = []
+            for line in git_res.stdout.splitlines():
+                if "refs/heads/" in line:
+                    branches.append(line.split("refs/heads/")[-1].strip())
+            default_branch = "main" if "main" in branches else ("master" if "master" in branches else (branches[0] if branches else "main"))
+
+            # Optional: attempt to query REST API for extra metadata (permissions/full_name)
+            extra_perms = {"pull": True, "push": True, "admin": False}
+            full_name = f"{owner}/{repo}"
+            try:
+                auth_prefix = "token" if token_str.startswith("ghp_") else "Bearer"
+                headers = {
+                    "Authorization": f"{auth_prefix} {token_str}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "User-Agent": "FlakeGuard-Token-Verifier"
+                }
+                async with httpx.AsyncClient(timeout=4.0) as client:
+                    api_resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+                    if api_resp.status_code == 200:
+                        data = api_resp.json()
+                        full_name = data.get("full_name", full_name)
+                        perms = data.get("permissions", {})
+                        extra_perms = {
+                            "pull": perms.get("pull", True),
+                            "push": perms.get("push", True),
+                            "admin": perms.get("admin", False)
+                        }
+            except Exception:
+                pass
+
+            return {
+                "valid": True,
+                "owner": owner,
+                "repo": repo,
+                "full_name": full_name,
+                "is_private": True,
+                "default_branch": default_branch,
+                "permissions": extra_perms,
+                "message": f"Successfully authenticated with '{owner}/{repo}'. Access granted."
+            }
+
+        # 2. If Git ls-remote failed, check stderr and REST API to provide precise user feedback
+        stderr_msg = (git_res.stderr if git_res is not None else "").lower()
+        if "authentication failed" in stderr_msg or "bad credentials" in stderr_msg:
+            return {
+                "valid": False,
+                "error": "Authentication failed: Invalid or expired GitHub Personal Access Token."
+            }
+        if "could not read username" in stderr_msg or "repository not found" in stderr_msg:
+            return {
+                "valid": False,
+                "error": f"Repository '{owner}/{repo}' was not found or your token lacks read access to it."
+            }
+
+        # Fallback query to REST API for detailed diagnostic
+        try:
+            auth_prefix = "token" if token_str.startswith("ghp_") else "Bearer"
+            headers = {
+                "Authorization": f"{auth_prefix} {token_str}",
+                "Accept": "application/vnd.github.v3+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "FlakeGuard-Token-Verifier"
+            }
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {
+                        "valid": True,
+                        "owner": owner,
+                        "repo": repo,
+                        "full_name": data.get("full_name", f"{owner}/{repo}"),
+                        "is_private": data.get("private", True),
+                        "default_branch": data.get("default_branch", "main"),
+                        "permissions": data.get("permissions", {"pull": True, "push": True}),
+                        "message": f"Successfully authenticated with '{owner}/{repo}'. Access granted."
+                    }
+                elif resp.status_code == 401:
+                    return {
+                        "valid": False,
+                        "error": "Invalid or expired Personal Access Token."
+                    }
+                elif resp.status_code == 404:
+                    return {
+                        "valid": False,
+                        "error": f"Repository '{owner}/{repo}' was not found or your token lacks read access."
+                    }
+                elif resp.status_code == 403:
+                    return {
+                        "valid": False,
+                        "error": "Access forbidden: Token lacks required repository permissions or organization SSO authorization."
+                    }
+        except Exception as e:
+            logger.warning("REST API verification fallback error: %s", e)
+
+        sanitized_err = (git_res.stderr if git_res is not None else "Connection failed").replace(token_str, "[REDACTED]")
+        return {
+            "valid": False,
+            "error": f"Verification failed: {sanitized_err.strip()}"
+        }
 
     @classmethod
     async def create_github_pr(
