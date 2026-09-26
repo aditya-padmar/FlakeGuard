@@ -1288,3 +1288,285 @@
 - **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
 - **Reasoning**: Environment/network dependency detected (100%): Line 220: Found network_call pattern: '{requests.map(req => ('; Line 254: Found network_call pattern: '{requests.length === 0 && ('; Line 300: Found network_call pattern: 'const pendingCount = requests.filter(r => r.status === 'Pending').length;'.
 - **Evidence Count**: 10 items identified
+
+### Session: `backend\src\controllers\auth.controller.js::auth.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.4, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 6: Found env_variable pattern: 'if (process.env.NODE_ENV !== "production") {'; Line 12: Found env_variable pattern: 'const apiKey = process.env.FIREBASE_API_KEY?.trim();'; Line 20: Found network_call pattern: 'const response = await fetch('.
+- **Evidence Count**: 7 items identified
+
+### Session: `backend\src\controllers\components.controller.js::components.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 53: Found state_mutation pattern: 'project.componentsMessages.push({'; Line 97: Found state_mutation pattern: 'project.componentsMessages.push({'; Line 110: Found state_mutation pattern: 'project.componentsMessages.push({'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\src\controllers\design.controller.js::design.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 54: Found state_mutation pattern: 'project.designMessages.push({'; Line 98: Found state_mutation pattern: 'project.designMessages.push({'; Line 112: Found state_mutation pattern: 'project.designMessages.push({'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\src\controllers\ideation.controller.js::ideation.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.35, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 65: Found state_mutation pattern: 'project.messages.push({'; Line 107: Found state_mutation pattern: 'project.messages.push({'; Line 122: Found state_mutation pattern: 'project.messages.push({'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\src\controllers\project.controller.js::project.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 43: Found state_mutation pattern: 'project.messages.push({'; Line 257: Found state_mutation pattern: 'project.messages.push({'; Line 272: Found state_mutation pattern: 'project.messages.push({'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\src\controllers\projectAi.controller.js::projectAi.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 1.0, 'environment': 0.75}`
+- **Reasoning**: State leakage detected (100%): Line 69: Found state_mutation pattern: 'queue.push(fullPath);'; Line 72: Found state_mutation pattern: 'output.push(fullPath);'; Line 121: Found state_mutation pattern: 'snippets.push({'.
+- **Evidence Count**: 6 items identified
+
+### Session: `backend\src\controllers\voice.controller.js::voice.controller` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.35, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 3: Found random_value pattern: 'const buildRequestId = () => `voice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\src\index.js::index` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 18: Found file_system pattern: 'const __filename = fileURLToPath(import.meta.url);'; Line 26: Found network_call pattern: 'origin: "http://localhost:5173",'; Line 41: Found env_variable pattern: 'app.listen(process.env.PORT, () => {'.
+- **Evidence Count**: 4 items identified
+
+### Session: `backend\src\lib\db.js::db` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `TIMING` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.4, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.25}`
+- **Reasoning**: Timing flakiness detected based on execution logs and test characteristics (40%).
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\src\lib\utils.js::utils` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.75}`
+- **Reasoning**: Environment/network dependency detected (75%): Line 4: Found env_variable pattern: 'const isProduction = process.env.NODE_ENV === "production";'; Line 5: Found env_variable pattern: 'const jwtSecret = process.env.JWT_SECRET?.trim();'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\src\lib\wokwi-components.js::wokwi-components` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.5}`
+- **Reasoning**: Environment/network dependency detected (50%): Line 30: Found hardware_peripheral pattern: '{ label: "MPU6050", partType: "wokwi-mpu6050", aliases: ["mpu6050"] },'; Line 64: Found env_variable pattern: 'const raw = process.env.WOKWI_EXTRA_COMPONENTS;'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\src\lib\wokwi-context.js::wokwi-context` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.65, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 84: Found network_call pattern: 'const diagramResponse = await fetch(`https://wokwi.com/api/projects/${projectId}/diagram.json`);'; Line 95: Found network_call pattern: 'const response = await fetch(`https://wokwi.com/projects/${projectId}`);'.
+- **Evidence Count**: 4 items identified
+
+### Session: `backend\src\lib\wokwi.js::wokwi` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 6: Found env_variable pattern: 'if (process.env.WOKWI_CLI_PATH?.trim()) {'; Line 7: Found env_variable pattern: 'return process.env.WOKWI_CLI_PATH.trim();'; Line 10: Found env_variable pattern: 'const home = process.env.USERPROFILE || process.env.HOME || "";'.
+- **Evidence Count**: 6 items identified
+
+### Session: `backend\src\middleware\auth.middleware.js::auth.middleware` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `ENVIRONMENT` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.5}`
+- **Reasoning**: Environment/network dependency detected (50%): Line 4: Found env_variable pattern: 'const getJwtSecret = () => process.env.JWT_SECRET?.trim();'; Line 11: Found env_variable pattern: 'secure: process.env.NODE_ENV === "production",'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\src\services\ai.services.js::ai.services` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 1.0, 'environment': 0.5}`
+- **Reasoning**: State leakage detected (100%): Line 55: Found state_mutation pattern: 'if (/\bled\b|\bblink\b|\blight\b/.test(text)) inferred.push("LED");'; Line 56: Found state_mutation pattern: 'if (/\bresistor\b|\bled\b/.test(text)) inferred.push("220 ohm resistor");'; Line 57: Found state_mutation pattern: 'if (/\bbuzzer\b|\balarm\b|\balert\b/.test(text)) inferred.push("Piezo buzzer");'.
+- **Evidence Count**: 13 items identified
+
+### Session: `backend\src\services\registry-codegen.service.js::setup` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.0, 'state_leakage': 1.0, 'environment': 0.5}`
+- **Reasoning**: State leakage detected (100%): Line 72: Found state_mutation pattern: 'candidates.push(cleaned);'; Line 76: Found state_mutation pattern: 'candidates.push(jsonBlock[1]);'; Line 81: Found state_mutation pattern: 'candidates.push(balanced);'.
+- **Evidence Count**: 6 items identified
+
+### Session: `backend\src\services\registry-codegen.service.js::loop` (2026-09-26 10:15:29 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.55, 'ordering': 0.0, 'state_leakage': 1.0, 'environment': 0.5}`
+- **Reasoning**: State leakage detected (100%): Line 72: Found state_mutation pattern: 'candidates.push(cleaned);'; Line 76: Found state_mutation pattern: 'candidates.push(jsonBlock[1]);'; Line 81: Found state_mutation pattern: 'candidates.push(balanced);'.
+- **Evidence Count**: 6 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 10:19:07 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.4, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 17: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 24: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestOrderingIssues::test_depends_on_retry_limit` (2026-09-26 10:19:07 UTC)
+- **Verdict**: `ORDERING` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.35, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Order dependency detected from test structure and naming indicators (35%).
+- **Evidence Count**: 1 items identified
+
+### Session: `TestStateLeakage::test_expects_clean_inventory` (2026-09-26 10:19:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 1.0, 'environment': 1.0}`
+- **Reasoning**: State leakage detected (100%): Line 26: Found resource_leak pattern: 'with open(inv_file, "r", encoding="utf-8") as f:'; Line 30: Found state_mutation pattern: 'rows.append({"sku": "SKU-1", "qty": 1})'; Line 31: Found resource_leak pattern: 'with open(inv_file, "w", encoding="utf-8") as f:'.
+- **Evidence Count**: 8 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 10:19:07 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.8}`
+- **Reasoning**: Environment/network dependency detected (80%): Line 10: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\app.py::app` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (30%): Line 97: Found global_mutation pattern: 'app = create_app()'.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\config.py::config` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 10: Found file_system pattern: 'BASE_DIR = Path(__file__).resolve().parent'; Line 30: Found network_call pattern: 'return ("http://localhost:5173", "http://127.0.0.1:5173")'; Line 36: Found env_variable pattern: 'key = os.getenv("SECRET_KEY", "").strip()'.
+- **Evidence Count**: 13 items identified
+
+### Session: `backend\database.py::database` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.2, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 19: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 31: Found global_mutation pattern: 'global _connection_pool'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\models\__init__.py::__init__` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `TIMING` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: No significant timing or race condition patterns detected in test code or execution logs.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\models\account.py::account` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (30%): Line 16: Found global_mutation pattern: 'ALLOWED_ACCOUNT_TYPES = {"Savings", "Current", "Salary", "Fixed Deposit"}'.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\routes\account_routes.py::account_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.8, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (80%): Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 20: Found global_mutation pattern: 'account_bp = Blueprint("accounts", __name__, url_prefix="/api/accounts")'; Line 170: Found state_mutation pattern: 'account = Account.update(parsed_account_id, cleaned_payload)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\routes\branch_routes.py::branch_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'branch_bp = Blueprint("branches", __name__, url_prefix="/api/branches")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\customer_routes.py::customer_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.8, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (80%): Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 20: Found global_mutation pattern: 'customer_bp = Blueprint("customers", __name__, url_prefix="/api/customers")'; Line 147: Found state_mutation pattern: 'customer = Customer.update(parsed_customer_id, cleaned_payload)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\routes\employee_routes.py::employee_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'employee_bp = Blueprint("employees", __name__, url_prefix="/api/employees")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\loan_routes.py::loan_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'loan_bp = Blueprint("loans", __name__, url_prefix="/api/loans")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\procedure_routes.py::procedure_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 17: Found global_mutation pattern: 'procedure_bp = Blueprint("procedures", __name__, url_prefix="/api/procedures")'; Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\transaction_routes.py::transaction_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'transaction_bp = Blueprint("transactions", __name__, url_prefix="/api/transactions")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\trigger_routes.py::trigger_routes` (2026-09-26 10:21:07 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 17: Found global_mutation pattern: 'trigger_bp = Blueprint("triggers", __name__, url_prefix="/api/triggers")'; Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\app.py::app` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (30%): Line 97: Found global_mutation pattern: 'app = create_app()'.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\config.py::config` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 1.0}`
+- **Reasoning**: Environment/network dependency detected (100%): Line 10: Found file_system pattern: 'BASE_DIR = Path(__file__).resolve().parent'; Line 30: Found network_call pattern: 'return ("http://localhost:5173", "http://127.0.0.1:5173")'; Line 36: Found env_variable pattern: 'key = os.getenv("SECRET_KEY", "").strip()'.
+- **Evidence Count**: 13 items identified
+
+### Session: `backend\database.py::database` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.2, 'state_leakage': 0.6, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (60%): Line 19: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 31: Found global_mutation pattern: 'global _connection_pool'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\models\__init__.py::__init__` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `TIMING` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: No significant timing or race condition patterns detected in test code or execution logs.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\models\account.py::account` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.3, 'environment': 0.0}`
+- **Reasoning**: State leakage detected (30%): Line 16: Found global_mutation pattern: 'ALLOWED_ACCOUNT_TYPES = {"Savings", "Current", "Salary", "Fixed Deposit"}'.
+- **Evidence Count**: 1 items identified
+
+### Session: `backend\routes\account_routes.py::account_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.8, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (80%): Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 20: Found global_mutation pattern: 'account_bp = Blueprint("accounts", __name__, url_prefix="/api/accounts")'; Line 170: Found state_mutation pattern: 'account = Account.update(parsed_account_id, cleaned_payload)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\routes\branch_routes.py::branch_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'branch_bp = Blueprint("branches", __name__, url_prefix="/api/branches")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\customer_routes.py::customer_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.8, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (80%): Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'; Line 20: Found global_mutation pattern: 'customer_bp = Blueprint("customers", __name__, url_prefix="/api/customers")'; Line 147: Found state_mutation pattern: 'customer = Customer.update(parsed_customer_id, cleaned_payload)'.
+- **Evidence Count**: 3 items identified
+
+### Session: `backend\routes\employee_routes.py::employee_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'employee_bp = Blueprint("employees", __name__, url_prefix="/api/employees")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\loan_routes.py::loan_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'loan_bp = Blueprint("loans", __name__, url_prefix="/api/loans")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\procedure_routes.py::procedure_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 17: Found global_mutation pattern: 'procedure_bp = Blueprint("procedures", __name__, url_prefix="/api/procedures")'; Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\transaction_routes.py::transaction_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 16: Found global_mutation pattern: 'transaction_bp = Blueprint("transactions", __name__, url_prefix="/api/transactions")'; Line 17: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
+
+### Session: `backend\routes\trigger_routes.py::trigger_routes` (2026-09-26 10:27:39 UTC)
+- **Verdict**: `STATE_LEAKAGE` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.6, 'environment': 0.25}`
+- **Reasoning**: State leakage detected (60%): Line 17: Found global_mutation pattern: 'trigger_bp = Blueprint("triggers", __name__, url_prefix="/api/triggers")'; Line 18: Found global_mutation pattern: 'logger = logging.getLogger(__name__)'.
+- **Evidence Count**: 2 items identified
