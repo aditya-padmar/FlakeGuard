@@ -81,6 +81,9 @@ function Shell() {
   const rerun = useCallback(() => { if (data.mode === 'demo') runDemo(); else navigate('/'); }, [data.mode, runDemo, navigate]);
   const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname === '/sources' ? 'Repository sources' : location.pathname === '/guide' ? 'Workspace guide' : location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
 
+  const isResultView = ['/dashboard', '/inventory', '/fixes', '/quarantine'].includes(location.pathname);
+  const showDataMode = Boolean(process || isResultView);
+
   if (location.pathname === '/login' || location.pathname === '/signup') return <Navigate to="/" replace />;
 
   return <div className={isLanding ? 'fg-app fg-public' : 'fg-app'}>
@@ -107,7 +110,9 @@ function Shell() {
         <div className="fg-topbar-actions">
           {!isLanding && (
             <>
-              <span className={`fg-data-mode ${data.mode === 'demo' ? 'is-demo' : ''}`}><span className="fg-status-dot" />{process ? 'Analysis running' : data.mode === 'demo' ? 'Sample dataset' : 'API results'}</span>
+              {showDataMode && (
+                <span className={`fg-data-mode ${data.mode === 'demo' ? 'is-demo' : ''}`}><span className="fg-status-dot" />{process ? 'Analysis running' : data.mode === 'demo' ? 'Sample dataset' : 'API results'}</span>
+              )}
               <Link to="/" className="fg-button fg-button-small"><Plus size={15} />New analysis</Link>
             </>
           )}

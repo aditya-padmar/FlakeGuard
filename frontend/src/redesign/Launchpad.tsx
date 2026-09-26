@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, Braces, Check, ChevronRight, CircleDot, Command, Layers3, LoaderCircle, Play, Radar, ScanLine, ShieldCheck, Sparkles } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ArrowRight, ArrowUpRight, Braces, Check, ChevronRight, CircleDot, Command, KeyRound, Layers3, LoaderCircle, Lock, Play, Radar, ScanLine, ShieldCheck, Sparkles } from 'lucide-react';
 import { parseGithubUrl } from './data';
 import { useSamplePlayback } from './useSamplePlayback';
 import { BeamsBackground } from '@/components/ui/beams-background';
@@ -173,6 +174,7 @@ const SAMPLE_SCENARIOS: SampleScenario[] = [
 type LaunchpadProps = { onRun: (url: string, branch: string) => Promise<void>; onDemo: () => void; error: string | null; busy: boolean };
 
 export default function Launchpad({ onRun, onDemo, error, busy }: LaunchpadProps) {
+  const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [branch] = useState('main');
   const [validation, setValidation] = useState<string | null>(null);
@@ -267,15 +269,69 @@ export default function Launchpad({ onRun, onDemo, error, busy }: LaunchpadProps
         </motion.div>
         <motion.div className="fg-command-panel" initial={reducedMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35, delay: .1 }}>
           <form onSubmit={submit}>
-            <label htmlFor="fg-repository">Analyze a repository</label>
-            <p>Start with a public GitHub repository.</p>
+            <div className="fg-command-header-row">
+              <label htmlFor="fg-repository">Analyze a repository</label>
+              <Link
+                to={(() => {
+                  const targetRepo = normalized || url.trim();
+                  const q = new URLSearchParams();
+                  if (targetRepo) q.set('repo', targetRepo);
+                  q.set('visibility', 'private');
+                  return `/sources?${q.toString()}`;
+                })()}
+                className="fg-private-switch-link"
+                title="Need to analyze a private repository? Switch to Developer Tools"
+              >
+                <Lock size={12} className="fg-private-switch-icon" />
+                <span>Private repo? Developer Tools ↗</span>
+              </Link>
+            </div>
+            <p className="fg-command-subtext">Start with a public GitHub repository.</p>
             <div className={`fg-repository-input ${normalized ? 'fg-repository-valid' : ''}`}>
               <GitHubIcon size={20} />
               <input ref={input} id="fg-repository" name="repository" placeholder="github.com/your-org/your-repo" value={url} onChange={event => { setUrl(event.target.value); setValidation(null); }} autoComplete="url" spellCheck={false} disabled={waiting || isRolling} aria-invalid={!!validation} />
               {normalized ? <Check size={17} className="fg-ex-positive" aria-label="Valid repository URL" /> : <kbd><Command size={11} /> K</kbd>}
               <BorderBeam duration={8} size={100} />
             </div>
-            {(validation || error) && <div className="fg-ex-error" role="alert">{validation || error}</div>}
+            {(() => {
+              const activeError = validation || error;
+              if (!activeError) return null;
+              const isPrivateRepoError = (
+                activeError.toLowerCase().includes('private') ||
+                activeError.toLowerCase().includes('personal access token') ||
+                activeError.toLowerCase().includes('token')
+              );
+              if (isPrivateRepoError) {
+                return (
+                  <div className="fg-private-bridge-box" role="alert">
+                    <div className="fg-bridge-badge-row">
+                      <span className="fg-bridge-badge">
+                        <Lock size={12} />
+                        <span>Private Repository Detected</span>
+                      </span>
+                      <span className="fg-bridge-hint">Credentials Required</span>
+                    </div>
+                    <p className="fg-bridge-msg">{activeError}</p>
+                    <button
+                      type="button"
+                      className="fg-bridge-action-btn"
+                      onClick={() => {
+                        const targetRepo = normalized || url.trim();
+                        const q = new URLSearchParams();
+                        if (targetRepo) q.set('repo', targetRepo);
+                        q.set('visibility', 'private');
+                        navigate(`/sources?${q.toString()}`);
+                      }}
+                    >
+                      <KeyRound size={15} />
+                      <span>Open in Developer Tools &amp; Enter Token</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                );
+              }
+              return <div className="fg-ex-error" role="alert">{activeError}</div>;
+            })()}
             <button className="fg-button fg-button-primary fg-launch-run" type="submit" disabled={waiting || isRolling}>
               {isRolling && (
                 <motion.div

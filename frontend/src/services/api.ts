@@ -311,7 +311,26 @@ export interface PipelineAnalysisResult {
   };
 }
 
+export interface TokenVerificationResult {
+  valid: boolean;
+  owner?: string;
+  repo?: string;
+  full_name?: string;
+  is_private?: boolean;
+  default_branch?: string;
+  permissions?: {
+    pull?: boolean;
+    push?: boolean;
+    admin?: boolean;
+  };
+  message?: string;
+  error?: string;
+}
+
 export const repositoryApi = {
+  verifyToken: (data: { repo_url: string; token: string }, signal?: AbortSignal) =>
+    axios.post<TokenVerificationResult>(`${API_BASE}/repository/verify-token`, data, { signal }),
+
   cloneAndAnalyze: (data: {
     repo_url: string;
     branch?: string;
