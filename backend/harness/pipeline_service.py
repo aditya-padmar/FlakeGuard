@@ -303,34 +303,58 @@ class PipelineService:
                 test_pattern=test_pattern
             )
 
-        flaky_tests_data = [
-            {
-                "test_name": t.test_name,
-                "file_path": t.file_path,
-                "flake_rate": t.flake_rate,
-                "total_runs": t.total_runs,
-                "pass_count": t.pass_count,
-                "fail_count": t.fail_count,
-                "recent_failures": t.recent_failures
-            }
-            for t in detection.flaky_tests
-        ]
-
+        flaky_tests_data = []
         classifications_data = []
         fixes_data = []
         audit_data = {}
 
         if detection.flaky_tests:
-            # Step 2: Classification (F2) with BobAgent
+            # Step 2: Resolve source files WITHOUT mutating detection.flaky_tests.file_path.
+            # We keep a separate resolved_paths dict so that flaky_tests_data,
+            # classifications_data, and fixes_data all use the same file_path value.
             agent = BobAgent()
-            test_sources = {}
+            test_sources: Dict[str, str] = {}
+            resolved_paths: Dict[str, str] = {}   # test_name → resolved file_path string
+
             for test in detection.flaky_tests:
                 target_file = find_test_file(repo_path, test.file_path)
                 if target_file and target_file.exists():
-                    test.file_path = str(target_file)
+                    resolved = str(target_file)
                     test_sources[test.test_name] = target_file.read_text(encoding="utf-8")
                 else:
+                    resolved = test.file_path
                     test_sources[test.test_name] = f"# Source for {test.test_name}"
+                resolved_paths[test.test_name] = resolved
+
+            # Re-extract source via BobAgent when the placeholder was all we got,
+            # so F2 has real code to analyse.
+            for test in detection.flaky_tests:
+                src = test_sources[test.test_name]
+                if src.startswith("# Source for"):
+                    extracted = agent.extract_test_source(test.file_path, test.test_name)
+                    if extracted:
+                        test_sources[test.test_name] = extracted
+
+            # Stamp the canonical resolved path onto each FlakyTest so that
+            # Classification.file_path produced by BobAgent matches what we
+            # store in flaky_tests_data.
+            for test in detection.flaky_tests:
+                test.file_path = resolved_paths[test.test_name]
+
+            # Now build flaky_tests_data AFTER path resolution so it is consistent
+            # with what classifications will carry.
+            flaky_tests_data = [
+                {
+                    "test_name": t.test_name,
+                    "file_path": t.file_path,          # same value as resolved_paths
+                    "flake_rate": t.flake_rate,
+                    "total_runs": t.total_runs,
+                    "pass_count": t.pass_count,
+                    "fail_count": t.fail_count,
+                    "recent_failures": t.recent_failures
+                }
+                for t in detection.flaky_tests
+            ]
 
             classifications = await agent.classify_batch(detection.flaky_tests, test_sources)
 
@@ -348,16 +372,31 @@ class PipelineService:
                 for c in classifications
             ]
 
-            # Step 3: Remediation Generator & Diffs (F3)
-            fix_generator = FixGenerator()
-            for classification in classifications:
-                target_file = find_test_file(repo_path, classification.file_path)
-                if target_file and target_file.exists():
-                    test_source = target_file.read_text(encoding="utf-8")
-                else:
-                    test_source = agent.extract_test_source(classification.file_path, classification.test_name)
+            # Log how many were actually classified vs unknown
+            classified = sum(1 for c in classifications_data if c["root_cause"] != "unknown")
+            logger.info(
+                "F2 classification complete: %d/%d diagnosed (%d unclassified/unknown)",
+                classified, len(classifications_data), len(classifications_data) - classified
+            )
 
-                fix = await fix_generator.generate_fix(classification, test_source)
+            # Step 3: Remediation Generator & Diffs (F3)
+            # Use the already-resolved test.file_path from the loop above.
+            fix_generator = FixGenerator()
+            # Build a lookup from test_name → resolved source for F3
+            for classification in classifications:
+                src = test_sources.get(classification.test_name, "")
+                if not src or src.startswith("# Source for"):
+                    # Try reading from the file_path on the classification itself
+                    fp = Path(classification.file_path)
+                    if fp.exists():
+                        try:
+                            src = fp.read_text(encoding="utf-8")
+                        except Exception:
+                            src = agent.extract_test_source(classification.file_path, classification.test_name)
+                    else:
+                        src = agent.extract_test_source(classification.file_path, classification.test_name)
+
+                fix = await fix_generator.generate_fix(classification, src)
                 fixes_data.append({
                     "fix_id": fix.fix_id,
                     "test_name": fix.test_name,
