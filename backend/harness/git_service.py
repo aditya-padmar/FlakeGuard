@@ -152,7 +152,8 @@ class GitService:
 
                 # If zip contains a single top-level directory (e.g. repo-main/), use that as workspace
                 entries = [e for e in target_dir.iterdir() if e.is_dir() and not e.name.startswith(".")]
-                if len(entries) == 1 and not any(f.is_file() for f in target_dir.iterdir()):
+                loose_files = [f for f in target_dir.iterdir() if f.is_file()]
+                if len(entries) == 1 and not loose_files:
                     workspace = entries[0]
                 else:
                     workspace = target_dir
