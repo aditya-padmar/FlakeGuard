@@ -149,8 +149,22 @@ class PipelineService:
             )
         except RuntimeError as exc:
             err_msg = str(exc)
-            # Distinguish "no tests collected" (exit code 5) from real failures
-            if "no tests collected" in err_msg.lower() or "exit code: 5" in err_msg.lower():
+            # Map any "no tests collected" variant to a clean no_tests response
+            no_tests_keywords = (
+                "no tests were collected",
+                "no tests collected",
+                "exit code: 5",
+                "exit code: 4",  # pytest usage error (e.g. bad -k pattern)
+            )
+            if any(kw in err_msg.lower() for kw in no_tests_keywords):
+                # Surface the hint (import errors, missing deps) if present
+                hint = ""
+                if "hint:" in err_msg.lower():
+                    hint = " " + err_msg.split("Hint:", 1)[-1].strip() if "Hint:" in err_msg else ""
+                user_msg = (
+                    "No pytest-compatible tests were found in this repository."
+                    + (f" {hint.strip()}" if hint.strip() else "")
+                )
                 return _error_response(
                     pipeline_id=pipeline_id,
                     status="no_tests",
@@ -159,8 +173,8 @@ class PipelineService:
                     branch=branch,
                     commit_sha=commit_sha,
                     started_at=started_at,
-                    errors=[{"code": "NO_TESTS", "message": "No supported pytest tests were found."}],
-                    message="No supported pytest tests were found.",
+                    errors=[{"code": "NO_TESTS", "message": user_msg}],
+                    message=user_msg,
                 )
             return _error_response(
                 pipeline_id=pipeline_id,
