@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowUpRight, Braces, ChevronRight, CircleHelp, Command, FlaskConical, GitBranch, LayoutDashboard, LogOut, Menu, Plus, ShieldCheck, ShieldOff, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowUpRight, Braces, ChevronRight, CircleHelp, Command, FlaskConical, GitBranch, LayoutDashboard, LogOut, Menu, Plus, ShieldOff, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider, useWorkspace } from './redesign/WorkspaceContext';
 import { adaptAnalysis } from './redesign/data';
@@ -18,7 +18,14 @@ const AuditTools = lazy(() => import('./pages/AuditPage'));
 const RepositoryIngestion = lazy(() => import('./components/RepositoryIngestion'));
 
 function Brand() {
-  return <Link className="fg-brand" to="/" aria-label="FlakeGuard launchpad"><span className="fg-brand-mark"><ShieldCheck size={23} strokeWidth={1.7} /></span><span>flakeguard<span className="fg-brand-version">2.0</span></span></Link>;
+  return (
+    <Link className="fg-brand" to="/" aria-label="FlakeGuard launchpad">
+      <span className="fg-brand-mark">
+        <img src="/flakeguard-mark.png" alt="FlakeGuard logo" className="fg-brand-img" />
+      </span>
+      <span className="fg-brand-name">FlakeGuard</span>
+    </Link>
+  );
 }
 
 function Shell() {
@@ -127,7 +134,7 @@ function Shell() {
           </Routes></Suspense>
         </motion.div></AnimatePresence>
       </main>
-      {!isLanding && <footer className="fg-workspace-footer"><span><ShieldCheck size={13} />Evidence first. Human reviewed. Never auto-merged.</span><span><Command size={12} />FlakeGuard 2.0 <span className="fg-footer-dot">·</span> Built with IBM Bob</span></footer>}
+      {!isLanding && <footer className="fg-workspace-footer"><span><img src="/flakeguard-mark.png" alt="FlakeGuard" style={{ width: 14, height: 14, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />Evidence first. Human reviewed. Never auto-merged.</span><span><Command size={12} />FlakeGuard <span className="fg-footer-dot">·</span> Built with IBM Bob</span></footer>}
     </div>
   </div>;
 }

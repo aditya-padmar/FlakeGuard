@@ -435,7 +435,7 @@
 .fg-console-header > span:first-child { display: flex; align-items: center; gap: 8px; }
 .fg-console-header .fg-mono { font-size: 13px; color: var(--muted); letter-spacing: .5px; }
 .fg-console-lines { min-height: 247px; max-height: 350px; overflow: auto; padding: 17px; font: 12px/1.85 ui-monospace, SFMono-Regular, Consolas, monospace; scrollbar-color: #233348 transparent; scrollbar-width: thin; }
-.fg-console-line { display: grid; grid-template-columns: 48px 54px minmax(0, 1fr); gap: 8px; margin-bottom: 6px; color: #8499b2; }
+.fg-console-line { display: grid; grid-template-columns: 48px minmax(50px, max-content) minmax(0, 1fr); gap: 8px; margin-bottom: 6px; color: #8499b2; }
 .fg-console-line > time { color: var(--muted); }
 .fg-console-line > span:last-child { overflow-wrap: anywhere; }
 .fg-console-kind { color: #7d9ab7; }
@@ -446,7 +446,8 @@
 .fg-console-kind-init, .fg-console-kind-clone { color: #7d9ab7; }
 .fg-console-kind-scan, .fg-console-kind-run { color: #69c2ce; }
 .fg-console-kind-signal { color: #f59e0b; }
-.fg-console-kind-report { color: #10b981; }
+.fg-console-kind-report, .fg-console-kind-audit, .fg-console-kind-valid { color: #10b981; }
+.fg-console-kind-status { color: #38bdf8; }
 .fg-console-cursor { display: inline-block; width: 6px; height: 11px; margin: 8px 0 0 1px; background: #63b7bd; animation: fg-console-blink 1.5s steps(2, start) infinite; }
 @keyframes fg-console-blink { to { visibility: hidden; } }
 .fg-pipeline-footer { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding-top: 24px; color: var(--muted); font-size: 13px; line-height: 1.7; }

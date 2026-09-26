@@ -20,7 +20,16 @@ const agents = [
   { name: 'Environment', code: 'AGENT 04', detail: 'Runtime & machine assumptions', color: 'green', icon: Cpu },
 ];
 
-function getPipelineLogs(mode: 'demo' | 'live', repository: string) {
+function getLiveStage(seconds: number): number {
+  if (seconds < 4) return 0;   // Clone repository
+  if (seconds < 8) return 1;   // Detect framework
+  if (seconds < 14) return 2;  // Discover tests
+  if (seconds < 24) return 3;  // Repeat flake runs
+  if (seconds < 38) return 4;  // Bob + subagents
+  return 5;                    // Prepare remediation
+}
+
+function getPipelineLogs(mode: 'demo' | 'live', repository: string, maxSeconds: number = 0) {
   const repoName = repository || (mode === 'demo' ? 'acme / commerce-api' : 'submitted-repo');
   const shortName = repoName.split('/').pop()?.trim() || repoName;
 
@@ -37,25 +46,58 @@ function getPipelineLogs(mode: 'demo' | 'live', repository: string) {
       { stage: 4, at: 11, kind: 'AGENT', text: 'Timing hypothesis: wall-clock dependency in expiry assertion.' },
       { stage: 5, at: 12, kind: 'DIFF', text: 'Sample proposal: inject a controlled clock into the session fixture.' },
       { stage: 5, at: 13, kind: 'INFO', text: 'Preparing the demo report. Review proposed changes before applying.' },
+      { stage: 5, at: 14, kind: 'REPORT', text: 'Demo metrics and root-cause classification dossier compiled.' },
     ];
   }
 
-  return [
+  const logs = [
     { stage: 0, at: 0, kind: 'INIT', text: `Connecting to ${repoName} analysis pipeline…` },
     { stage: 0, at: 1, kind: 'CLONE', text: `Cloning ${repoName} into clean execution sandbox…` },
-    { stage: 1, at: 3, kind: 'DETECT', text: `Scanning project configuration and dependencies…` },
-    { stage: 1, at: 4, kind: 'DETECT', text: `Framework identified: pytest test runner active.` },
-    { stage: 2, at: 5, kind: 'SCAN', text: `Discovering test suite inventory in ${shortName}…` },
-    { stage: 2, at: 6, kind: 'SCAN', text: `Mapped test collection. Constructing repeat-run flake matrix.` },
-    { stage: 3, at: 7, kind: 'RUN', text: `Executing pass 01-03 / 10 across isolated containers… [PASS]` },
-    { stage: 3, at: 8, kind: 'FAIL', text: `Variance detected in repeated runs · recording stdout & stderr` },
-    { stage: 3, at: 9, kind: 'SIGNAL', text: `Pass 04-10 complete · collecting failure stack traces & timing signals` },
-    { stage: 4, at: 10, kind: 'BOB', text: `Dispatching IBM Bob orchestrator with 4 specialist root-cause agents.` },
-    { stage: 4, at: 11, kind: 'AGENT', text: `Agent 01 (Timing) & 02 (Ordering): Auditing async race conditions & sequence.` },
-    { stage: 4, at: 12, kind: 'AGENT', text: `Agent 03 (Leakage) & 04 (Environment): Checking fixture tear-down & state.` },
-    { stage: 5, at: 13, kind: 'DIFF', text: `Synthesizing root-cause classifications, evidence, and remediation diffs…` },
-    { stage: 5, at: 14, kind: 'REPORT', text: `Compiling final trust audit report and metrics for ${shortName}…` },
+    { stage: 0, at: 3, kind: 'CLONE', text: `Verified repository tree structure and commit integrity.` },
+    { stage: 1, at: 4, kind: 'DETECT', text: `Scanning project configuration, test runners, and dependencies…` },
+    { stage: 1, at: 6, kind: 'DETECT', text: `Framework identified: test runner and test configuration active.` },
+    { stage: 2, at: 8, kind: 'SCAN', text: `Discovering test suite inventory in ${shortName}…` },
+    { stage: 2, at: 10, kind: 'SCAN', text: `Mapped test collection. Constructing repeat-run flake matrix.` },
+    { stage: 2, at: 12, kind: 'SCAN', text: `Test inventory mapped · allocating isolated worker sandboxes.` },
+    { stage: 3, at: 14, kind: 'RUN', text: `Executing pass 01-03 / 10 across isolated containers… [PASS]` },
+    { stage: 3, at: 16, kind: 'FAIL', text: `Variance detected in repeated runs · recording stdout & stderr` },
+    { stage: 3, at: 18, kind: 'RUN', text: `Executing pass 04-06 / 10 · monitoring CPU, memory, and async timers` },
+    { stage: 3, at: 20, kind: 'SIGNAL', text: `Intermittent non-determinism captured · isolating failure traces` },
+    { stage: 3, at: 22, kind: 'RUN', text: `Executing pass 07-10 / 10 · collecting failure stack traces & timing signals` },
+    { stage: 4, at: 24, kind: 'BOB', text: `Dispatching IBM Bob orchestrator with 4 specialist root-cause agents.` },
+    { stage: 4, at: 26, kind: 'AGENT', text: `Agent 01 (Timing): Auditing async race conditions & wall-clock assertions…` },
+    { stage: 4, at: 28, kind: 'AGENT', text: `Agent 02 (Ordering): Auditing sequence coupling & shared memory state…` },
+    { stage: 4, at: 30, kind: 'AGENT', text: `Agent 03 (Leakage): Checking fixture tear-down & lingering state…` },
+    { stage: 4, at: 32, kind: 'AGENT', text: `Agent 04 (Environment): Evaluating OS assumptions, locale & machine dependencies…` },
+    { stage: 4, at: 34, kind: 'BOB', text: `Cross-referencing specialist hypotheses against intermittent failure traces…` },
+    { stage: 4, at: 36, kind: 'AGENT', text: `Specialist consensus reached · classifying root cause vectors.` },
+    { stage: 5, at: 38, kind: 'DIFF', text: `Synthesizing root-cause classifications, evidence, and remediation diffs…` },
+    { stage: 5, at: 41, kind: 'DIFF', text: `Generating AST-based patch candidates for identified flaky assertions…` },
+    { stage: 5, at: 44, kind: 'VALID', text: `Validating candidate diffs against regression and stability checks…` },
+    { stage: 5, at: 47, kind: 'AUDIT', text: `Compiling trust audit report, quarantine status, and health metrics…` },
+    { stage: 5, at: 50, kind: 'AUDIT', text: `Evaluating quarantine thresholds and calculating flakiness risk index…` },
+    { stage: 5, at: 53, kind: 'REPORT', text: `Assembling evidence dossier and cryptographic audit chain for ${shortName}…` },
+    { stage: 5, at: 56, kind: 'DIFF', text: `Formulating final remediation patch and pull-request payload…` },
+    { stage: 5, at: 60, kind: 'STATUS', text: `Remediation synthesis complete · awaiting backend package finalization…` },
   ];
+
+  if (mode === 'live' && maxSeconds > 60) {
+    const ongoingCycles = [
+      { kind: 'STATUS', text: `Deep analysis stream active · verifying multi-pass stability vectors…` },
+      { kind: 'AGENT', text: `Subagent audit cross-checking AST diff integrity against failure traces…` },
+      { kind: 'AUDIT', text: `Recalculating confidence metrics across recorded test executions…` },
+      { kind: 'RUN', text: `Secondary sandboxed validation pass running in background…` },
+      { kind: 'DIFF', text: `Formatting final patch proposals and contextual code diffs…` },
+      { kind: 'STATUS', text: `Synchronizing audit records with FlakeGuard database…` },
+    ];
+    for (let t = 65; t <= maxSeconds; t += 5) {
+      const cycleIndex = Math.floor((t - 65) / 5) % ongoingCycles.length;
+      const item = ongoingCycles[cycleIndex];
+      logs.push({ stage: 5, at: t, kind: item.kind, text: item.text });
+    }
+  }
+
+  return logs;
 }
 
 function formatTime(seconds: number) {
@@ -67,10 +109,10 @@ export default function PipelineView({ mode, repository, step, elapsed, startedA
   const localElapsed = useElapsedSeconds(startedAt ?? 0);
   const demo = mode === 'demo';
   const seconds = Math.max(0, Math.floor(elapsed !== undefined && Number.isFinite(elapsed) ? elapsed : localElapsed));
-  const current = Math.max(0, Math.min(stages.length - 1, demo ? (Number.isFinite(step) ? step : 0) : Math.min(5, Math.floor(seconds / 2.2))));
+  const current = Math.max(0, Math.min(stages.length - 1, demo ? (Number.isFinite(step) ? step : 0) : getLiveStage(seconds)));
   const agentActive = current === 4;
   const agentDone = current > 4;
-  const allLogs = useMemo(() => getPipelineLogs(mode, repository), [mode, repository]);
+  const allLogs = useMemo(() => getPipelineLogs(mode, repository, seconds), [mode, repository, seconds]);
   const lines = allLogs.filter(log => log.stage <= current && log.at <= seconds);
   const consoleRef = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);

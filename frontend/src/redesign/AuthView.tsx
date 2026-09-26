@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, Check, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, Eye, EyeOff, LockKeyhole } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './experience.css';
 
@@ -47,7 +47,10 @@ export default function AuthView({ mode }: { mode: 'login' | 'signup' }) {
   return (
     <div className="fg-auth">
       <section className="fg-auth-editorial" aria-label="About FlakeGuard">
-        <Link className="fg-ex-brand" to="/" aria-label="FlakeGuard home"><span className="fg-ex-brand-symbol"><ShieldCheck size={23} /></span>FlakeGuard</Link>
+        <Link className="fg-ex-brand" to="/" aria-label="FlakeGuard home">
+          <img src="/flakeguard-mark.png" alt="FlakeGuard logo" className="fg-brand-img" style={{ width: 34, height: 34, marginRight: 4 }} />
+          FlakeGuard
+        </Link>
         <div className="fg-auth-story">
           <p className="fg-eyebrow"><span className="fg-ex-status-dot" /> A closer look at unreliable tests</p>
           <h1>Green should<br />mean <span>go.</span></h1>
