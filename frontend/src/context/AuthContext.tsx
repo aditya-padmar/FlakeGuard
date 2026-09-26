@@ -23,17 +23,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
+      const profile = saved ? JSON.parse(saved) : null;
+      return profile && typeof profile.name === 'string' && typeof profile.email === 'string' ? profile as User : null;
     } catch {
       return null;
     }
   });
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    try {
+      if (user) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // Restricted storage must not prevent an in-memory demo session.
     }
   }, [user]);
 

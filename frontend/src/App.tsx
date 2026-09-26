@@ -1,104 +1,146 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import RemediationPage from './pages/RemediationPage';
-import AuditPage from './pages/AuditPage';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
+import { Activity, ArrowLeft, ArrowUpRight, Braces, ChevronRight, CircleHelp, Command, FlaskConical, GitBranch, LayoutDashboard, LogOut, Menu, Plus, ShieldCheck, ShieldOff, Sparkles, Terminal, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import './App.css';
+import { WorkspaceProvider, useWorkspace } from './redesign/WorkspaceContext';
+import { adaptAnalysis } from './redesign/data';
+import Launchpad from './redesign/Launchpad';
+import DashboardView from './redesign/DashboardView';
+import PipelineView from './redesign/PipelineView';
+import AuthView from './redesign/AuthView';
+import AmbientBackground from './redesign/AmbientBackground';
+import './redesign/experience.css';
+import './redesign/dashboard.css';
 
-function Header() {
-  const location = useLocation();
+const RemediationTools = lazy(() => import('./pages/RemediationPage'));
+const AuditTools = lazy(() => import('./pages/AuditPage'));
+const RepositoryIngestion = lazy(() => import('./components/RepositoryIngestion'));
+
+function Brand() {
+  return <Link className="fg-brand" to="/" aria-label="FlakeGuard launchpad"><span className="fg-brand-mark"><ShieldCheck size={23} strokeWidth={1.7} /></span><span>flakeguard<span className="fg-brand-version">2.0</span></span></Link>;
+}
+
+function Shell() {
+  const { data, process, error, startDemo, startLive, cancel, validateDemo } = useWorkspace();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const navigationTrigger = useRef<HTMLButtonElement>(null);
+  const completedProcess = useRef(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const sidebar = sidebarRef.current;
+    const content = contentRef.current;
+    const trigger = navigationTrigger.current;
+    const previousOverflow = document.body.style.overflow;
+    content?.setAttribute('inert', '');
+    document.body.style.overflow = 'hidden';
+    const focusable = () => Array.from(sidebar?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []).filter(element => element.getClientRects().length > 0);
+    focusable()[0]?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setMenuOpen(false); }
+      if (event.key === 'Tab') {
+        const elements = focusable();
+        const first = elements[0]; const last = elements[elements.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    const handleResize = () => { if (window.innerWidth > 900) setMenuOpen(false); };
+    window.addEventListener('keydown', handleKey);
+    window.addEventListener('resize', handleResize);
+    return () => { content?.removeAttribute('inert'); document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', handleKey); window.removeEventListener('resize', handleResize); trigger?.focus(); };
+  }, [menuOpen]);
+  const isAuth = location.pathname === '/login' || location.pathname === '/signup';
+  const isLanding = location.pathname === '/';
+  const navItems = [
+    { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+    { to: '/inventory', label: 'Test inventory', icon: FlaskConical },
+    { to: '/pipeline', label: 'Live pipeline', icon: Activity },
+    { to: '/fixes', label: 'Remediation', icon: Braces },
+    { to: '/quarantine', label: 'Quarantine audit', icon: ShieldOff },
+  ];
+  useEffect(() => { setMenuOpen(false); window.scrollTo(0, 0); }, [location.pathname]);
+  useEffect(() => {
+    if (location.pathname === '/pipeline' && !process && completedProcess.current) navigate(error ? '/' : '/dashboard', { replace: true });
+    completedProcess.current = Boolean(process);
+  }, [process, error, location.pathname, navigate]);
+  const runDemo = () => { startDemo(); navigate('/pipeline'); };
+  const runLive = async (url: string, branch: string) => { const request = startLive(url, branch); navigate('/pipeline'); await request; };
+  const rerun = () => { if (data.mode === 'demo') runDemo(); else navigate('/'); };
+  const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  if (isAuth) return <><a className="fg-skip-link" href="#main-content">Skip to content</a><main id="main-content"><AuthView mode={location.pathname === '/signup' ? 'signup' : 'login'} /></main></>;
 
-  return (
-    <header className="app-header">
-      <div className="header-brand">
-        <Link to="/" className="brand-logo">
-          <div className="brand-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-          </div>
-          <span className="brand-name">FlakeGuard</span>
-          <span className="brand-badge">AI SHIELD</span>
-        </Link>
-      </div>
-
-      <nav className="header-nav">
-        <Link to="/" className={location.pathname === '/' ? 'active' : ''}>Overview</Link>
-        {isAuthenticated ? (
-          <>
-            <Link to="/dashboard" className={location.pathname === '/dashboard' ? 'active' : ''}>Dashboard</Link>
-            <Link to="/quarantine" className={location.pathname === '/quarantine' ? 'active' : ''}>Quarantine</Link>
-            <Link to="/fixes" className={location.pathname === '/fixes' ? 'active' : ''}>Fixes</Link>
-            <Link to="/remediation" className={location.pathname === '/remediation' ? 'active' : ''}>Remediation</Link>
-            <Link to="/audit" className={location.pathname === '/audit' ? 'active' : ''}>Audit</Link>
-          </>
-        ) : (
-          <>
-            <a href="/#capabilities">Capabilities</a>
-            <a href="/#interactive-demo">Live Demo</a>
-          </>
-        )}
-      </nav>
-
-      <div className="header-actions">
-        {isAuthenticated ? (
-          <>
-            <div className="user-profile-badge" title={user?.email}>
-              <span className="user-avatar">{user?.avatar || 'U'}</span>
-              <span>{user?.name}</span>
-            </div>
-            <button type="button" className="btn-logout" onClick={handleLogout}>
-              Sign Out
-            </button>
-          </>
-        ) : (
-          <>
-            <Link to="/login" className="btn-nav-outline">
-              Sign In
-            </Link>
-            <Link to="/signup" className="btn-nav-cta">
-              Get Started →
-            </Link>
-          </>
-        )}
-      </div>
-    </header>
-  );
-}
-
-function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <div className="app">
-          <Header />
-          <main className="app-main">
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/dashboard" element={<Dashboard initialTab="tests" />} />
-              <Route path="/quarantine" element={<Dashboard initialTab="quarantine" />} />
-              <Route path="/fixes" element={<Dashboard initialTab="fixes" />} />
-              <Route path="/remediation" element={<RemediationPage />} />
-              <Route path="/audit" element={<AuditPage />} />
-            </Routes>
-          </main>
+  return <div className={isLanding ? 'fg-app fg-public' : 'fg-app'}>
+    <a className="fg-skip-link" href="#main-content">Skip to content</a>
+    {!isLanding && <>
+      {menuOpen && <button className="fg-sidebar-backdrop" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
+      <aside ref={sidebarRef} role={menuOpen ? 'dialog' : undefined} aria-modal={menuOpen || undefined} aria-label="Workspace sidebar" className={`fg-sidebar ${menuOpen ? 'is-open' : ''}`}>
+        <div className="fg-sidebar-brand"><Brand /><button className="fg-icon-button fg-mobile-only" onClick={() => setMenuOpen(false)} aria-label="Close sidebar"><X size={18} /></button></div>
+        <div className="fg-workspace-switch"><span className="fg-workspace-avatar">F</span><div><strong>Engineering</strong><span>Team workspace</span></div></div>
+        <span className="fg-nav-label">Workspace</span>
+        <nav aria-label="Workspace navigation">{navItems.map(item => <NavLink key={item.to} to={item.to} className={({ isActive }) => `fg-nav-item ${isActive ? 'is-active' : ''}`}><item.icon size={18} /><span>{item.label}</span>{item.to === '/fixes' && <span className="fg-nav-count">{data.tests.filter(test => test.fixStatus !== 'none').length}</span>}{item.to === '/pipeline' && process && <span className="fg-status-dot" />}</NavLink>)}</nav>
+        <div className="fg-sidebar-divider" /><span className="fg-nav-label">Developer tools</span>
+        <nav aria-label="Developer tools"><NavLink className="fg-nav-item" to="/sources"><GitBranch size={18} />Repository sources</NavLink><NavLink className="fg-nav-item" to="/tools/remediation"><Terminal size={18} />Evidence workbench</NavLink><NavLink className="fg-nav-item" to="/tools/audit"><ShieldCheck size={18} />Run backend audit</NavLink></nav>
+        <div className="fg-sidebar-bottom"><div className="fg-bob-card"><span className="fg-bob-icon"><Sparkles size={19} /></span><strong>Analysis by IBM Bob</strong><p>Four specialists investigate each failure.</p><Link to="/#capabilities">How analysis works <ArrowUpRight size={13} /></Link></div>
+          <button className="fg-nav-item" onClick={() => setHelpOpen(value => !value)} aria-expanded={helpOpen}><CircleHelp size={17} />Workspace guide</button>
+          <div className="fg-account"><span className="fg-account-avatar">{user?.avatar ?? 'D'}</span><div><strong>{user?.name ?? 'Demo workspace'}</strong><span>{user ? 'Local demo profile' : 'Explore without signing in'}</span></div>{user ? <button className="fg-icon-button" aria-label="Sign out" onClick={() => { logout(); navigate('/'); }}><LogOut size={16} /></button> : <Link to="/login" aria-label="Sign in"><ArrowUpRight size={16} /></Link>}</div>
         </div>
-      </Router>
-    </AuthProvider>
-  );
+      </aside>
+    </>}
+    <div ref={contentRef} className="fg-app-body">
+      <header className="fg-topbar">
+        {isLanding ? <Brand /> : <div className="fg-breadcrumb"><button ref={navigationTrigger} className="fg-icon-button fg-mobile-only" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={19} /></button><span>Workspace</span><ChevronRight size={13} /><strong>{pageName}</strong></div>}
+        {isLanding && <nav className="fg-public-nav" aria-label="Product navigation"><a href="#capabilities">Platform</a><a href="#interactive-demo">How it works</a><Link to="/dashboard">Explore workspace <ArrowUpRight size={12} /></Link></nav>}
+        <div className="fg-topbar-actions">{!isLanding && <span className={`fg-data-mode ${data.mode === 'demo' ? 'is-demo' : ''}`}><span className="fg-status-dot" />{process ? 'Analysis running' : data.mode === 'demo' ? 'Sample dataset' : 'API results'}</span>}{isLanding ? <><Link className="fg-signin-link" to="/login">Sign in</Link><Link to="/signup" className="fg-button fg-button-small">Get started <ArrowUpRight size={14} /></Link></> : <Link to="/" className="fg-button fg-button-small"><Plus size={15} />New analysis</Link>}</div>
+      </header>
+      <main id="main-content" className={isLanding ? 'fg-public-main' : 'fg-workspace-main'}>
+        {helpOpen && !isLanding && <section className="fg-help-panel fg-panel"><div><strong>From flaky to trustworthy.</strong><p>Start an analysis, inspect the evidence, then review a suggested patch. Sample runs and validations are simulations; real repository analysis requires the backend. No fixes are auto-merged.</p></div><button className="fg-icon-button" aria-label="Close workspace guide" onClick={() => setHelpOpen(false)}><X size={16} /></button></section>}
+        <AnimatePresence mode="wait"><motion.div key={isLanding ? 'landing' : 'workspace'} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: .22 }}>
+          <Suspense fallback={<div className="fg-loading" role="status"><Activity size={22} />Loading workspace…</div>}><Routes>
+            <Route path="/" element={<Launchpad onRun={runLive} onDemo={runDemo} error={error} busy={!!process} />} />
+            <Route path="/dashboard" element={<DashboardView data={data} view="overview" onRerun={rerun} onValidate={validateDemo} />} />
+            <Route path="/inventory" element={<DashboardView data={data} view="inventory" onRerun={rerun} onValidate={validateDemo} />} />
+            <Route path="/quarantine" element={<DashboardView data={data} view="quarantine" onRerun={rerun} onValidate={validateDemo} />} />
+            <Route path="/audit" element={<Navigate to="/quarantine" replace />} />
+            <Route path="/fixes" element={<DashboardView data={data} view="fixes" onRerun={rerun} onValidate={validateDemo} />} />
+            <Route path="/remediation" element={<Navigate to="/fixes" replace />} />
+            <Route path="/pipeline" element={process ? <PipelineView {...process} onCancel={() => { cancel(); navigate('/'); }} /> : <section className="fg-not-found"><span className="fg-eyebrow">PIPELINE / STANDING BY</span><h1>Ready for the next investigation.</h1><p className="fg-source-intro">No analysis is running. Your current results are unchanged.</p><Link to="/" className="fg-button fg-button-primary">Analyze a repository <ArrowUpRight size={15} /></Link><button className="fg-button" style={{ marginLeft: 12 }} onClick={runDemo}>Start sample demo</button></section>} />
+            <Route path="/tools/remediation" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><RemediationTools /></div>} />
+            <Route path="/tools/audit" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><AuditTools /></div>} />
+            <Route path="/sources" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">REPOSITORY SOURCES</div><h1>Bring your test suite.</h1><p className="fg-source-intro">Analyze a GitHub repository, upload a test archive, or use a path on your backend server.</p><RepositorySources /></div>} />
+            <Route path="*" element={<div className="fg-not-found"><span className="fg-eyebrow">404 / SIGNAL LOST</span><h1>This page isn’t in the pipeline.</h1><Link className="fg-button fg-button-primary" to="/"><ArrowLeft size={16} />Back to launchpad</Link></div>} />
+          </Routes></Suspense>
+        </motion.div></AnimatePresence>
+      </main>
+      {!isLanding && <footer className="fg-workspace-footer"><span><ShieldCheck size={13} />Evidence first. Human reviewed. Never auto-merged.</span><span><Command size={12} />FlakeGuard 2.0 <span className="fg-footer-dot">·</span> Built with IBM Bob</span></footer>}
+    </div>
+  </div>;
 }
 
-export default App;
+function RepositorySources() {
+  const { loadAnalysis } = useRepositoryResult();
+  return <RepositoryIngestion onAnalysisComplete={loadAnalysis} />;
+}
+
+function useRepositoryResult() {
+  const { setAnalysis } = useWorkspace();
+  const navigate = useNavigate();
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  return { loadAnalysis: (result: Parameters<typeof adaptAnalysis>[0]) => {
+    // The legacy source request can resolve after this route has been left.
+    if (!mounted.current) return;
+    setAnalysis(result); navigate('/dashboard');
+  } };
+}
+
+export default function App() {
+  return <MotionConfig reducedMotion="user"><AuthProvider><WorkspaceProvider><BrowserRouter><AmbientBackground /><Shell /></BrowserRouter></WorkspaceProvider></AuthProvider></MotionConfig>;
+}

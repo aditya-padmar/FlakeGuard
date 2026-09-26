@@ -1,0 +1,84 @@
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import axios from 'axios';
+import { repositoryApi, type PipelineAnalysisResult } from '../services/api';
+import { adaptAnalysis, createDemoData, parseGithubUrl, type WorkspaceData } from './data';
+
+interface ProcessState { mode: 'demo' | 'live'; repository: string; step: number; elapsed: number }
+interface WorkspaceContextValue {
+  data: WorkspaceData;
+  process: ProcessState | null;
+  error: string | null;
+  startDemo: () => void;
+  startLive: (url: string, branch: string) => Promise<void>;
+  cancel: () => void;
+  validateDemo: (id: string) => void;
+  setAnalysis: (result: PipelineAnalysisResult) => void;
+}
+const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const [data, setData] = useState(createDemoData);
+  const [process, setProcess] = useState<ProcessState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
+  const controller = useRef<AbortController | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clearTimer = useCallback(() => { if (timer.current) clearInterval(timer.current); timer.current = null; }, []);
+  const cancel = useCallback(() => {
+    generation.current += 1;
+    controller.current?.abort();
+    clearTimer();
+    setProcess(null);
+  }, [clearTimer]);
+  useEffect(() => () => { generation.current += 1; controller.current?.abort(); clearTimer(); }, [clearTimer]);
+
+  const startDemo = useCallback(() => {
+    cancel();
+    setError(null);
+    const started = Date.now();
+    setProcess({ mode: 'demo', repository: 'acme / commerce-api', step: 0, elapsed: 0 });
+    timer.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - started) / 1000);
+      if (elapsed >= 15) {
+        clearTimer();
+        setData(createDemoData());
+        setProcess(null);
+      } else setProcess({ mode: 'demo', repository: 'acme / commerce-api', step: Math.min(5, Math.floor(elapsed / 2.5)), elapsed });
+    }, 500);
+  }, [cancel, clearTimer]);
+
+  const startLive = useCallback(async (url: string, branch: string) => {
+    const normalized = parseGithubUrl(url);
+    if (!normalized) { setError('Enter a valid HTTPS GitHub repository URL.'); return; }
+    cancel();
+    const currentGeneration = generation.current;
+    const requestController = new AbortController();
+    controller.current = requestController;
+    setError(null);
+    const started = Date.now();
+    setProcess({ mode: 'live', repository: normalized.replace('https://github.com/', ''), step: 0, elapsed: 0 });
+    timer.current = setInterval(() => setProcess(previous => previous ? { ...previous, elapsed: Math.floor((Date.now() - started) / 1000) } : null), 1000);
+    try {
+      const response = await repositoryApi.cloneAndAnalyze({ repo_url: normalized, branch: branch.trim() || 'main', num_runs: 10 }, requestController.signal);
+      if (generation.current === currentGeneration) setData(adaptAnalysis(response.data));
+    } catch (cause) {
+      if (generation.current !== currentGeneration || axios.isCancel(cause)) return;
+      const detail = axios.isAxiosError(cause) ? cause.response?.data?.detail : null;
+      setError(typeof detail === 'string' ? detail : 'The analysis service could not complete this request. Check that the backend is running on port 8000 and that the repository is accessible. Your previous results have been kept.');
+    } finally {
+      if (generation.current === currentGeneration) { clearTimer(); setProcess(null); }
+    }
+  }, [cancel, clearTimer]);
+
+  const validateDemo = useCallback((id: string) => {
+    setData(previous => previous.mode !== 'demo' ? previous : { ...previous, tests: previous.tests.map(test => test.id === id && test.diff ? { ...test, fixStatus: 'validated' } : test) });
+  }, []);
+  const setAnalysis = useCallback((result: PipelineAnalysisResult) => { cancel(); setError(null); setData(adaptAnalysis(result)); }, [cancel]);
+  return <WorkspaceContext.Provider value={{ data, process, error, startDemo, startLive, cancel, validateDemo, setAnalysis }}>{children}</WorkspaceContext.Provider>;
+}
+
+export function useWorkspace() {
+  const context = useContext(WorkspaceContext);
+  if (!context) throw new Error('useWorkspace must be used within WorkspaceProvider');
+  return context;
+}

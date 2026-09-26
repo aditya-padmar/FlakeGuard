@@ -1,0 +1,202 @@
+{
+  "repository": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo",
+  "timestamp": "2026-09-25T19:57:13.966669+00:00",
+  "runs": 4,
+  "pipeline_version": "2.0-integrated",
+  "detection": {
+    "total_runs": 4,
+    "flaky_tests_count": 3,
+    "confidence": 0.4,
+    "flaky_tests": [
+      {
+        "test_name": "tests/test_order.py::TestOrderingIssues::test_second",
+        "file_path": "tests/test_order.py",
+        "flake_rate": 0.75,
+        "pass_count": 1,
+        "fail_count": 3
+      },
+      {
+        "test_name": "tests/test_network.py::TestEnvironmentIssues::test_random_failure",
+        "file_path": "tests/test_network.py",
+        "flake_rate": 0.25,
+        "pass_count": 3,
+        "fail_count": 1
+      },
+      {
+        "test_name": "tests/test_order.py::TestOrderingIssues::test_shared_state_b",
+        "file_path": "tests/test_order.py",
+        "flake_rate": 0.25,
+        "pass_count": 3,
+        "fail_count": 1
+      }
+    ]
+  },
+  "classifications": [
+    {
+      "classification_id": "81ee483a-3289-4df2-b37d-b7d14a8d9dd0",
+      "test_name": "tests/test_order.py::TestOrderingIssues::test_second",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py",
+      "root_cause": "ordering",
+      "confidence": "high",
+      "evidence": [
+        "Found 7 instances of global_state pattern",
+        "Found 4 instances of order_dependent pattern",
+        "Test name suggests order dependency: second"
+      ],
+      "reasoning": "Order dependency detected: Found 7 instances of global_state pattern; Found 4 instances of order_dependent pattern; Test name suggests order dependency: second.",
+      "suggested_fix_area": "Test execution order and dependencies"
+    },
+    {
+      "classification_id": "ecb8bb35-1f12-46d8-a2ec-00e43720933e",
+      "test_name": "tests/test_network.py::TestEnvironmentIssues::test_random_failure",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py",
+      "root_cause": "environment",
+      "confidence": "medium",
+      "evidence": [
+        "Found 7 instances of env_variable pattern",
+        "Found 1 instances of random_value pattern",
+        "Random usage without fixed seed"
+      ],
+      "reasoning": "Environment-related flakiness detected: Found 7 instances of env_variable pattern; Found 1 instances of random_value pattern; Random usage without fixed seed.",
+      "suggested_fix_area": "Environment configuration and setup"
+    },
+    {
+      "classification_id": "da3f45a1-e4b4-4832-8b87-052124fa4b9a",
+      "test_name": "tests/test_order.py::TestOrderingIssues::test_shared_state_b",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py",
+      "root_cause": "ordering",
+      "confidence": "medium",
+      "evidence": [
+        "Found 7 instances of global_state pattern",
+        "Found 4 instances of order_dependent pattern",
+        "Error suggests state issue: none"
+      ],
+      "reasoning": "Order dependency detected: Found 7 instances of global_state pattern; Found 4 instances of order_dependent pattern; Error suggests state issue: none.",
+      "suggested_fix_area": "Test execution order and dependencies"
+    }
+  ],
+  "fixes": [
+    {
+      "fix_id": "bf3e7928-3409-49ba-82a3-3f4e225cfff2",
+      "test_name": "tests/test_order.py::TestOrderingIssues::test_second",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py",
+      "status": "proposed",
+      "suggestions": [
+        {
+          "suggestion_id": "c345759b-745e-476d-99fe-be221cebe8fe",
+          "fix_type": "isolation_fix",
+          "description": "Inject per-test fixture to eliminate shared-state dependency",
+          "rationale": "Tests that share a single global object depend on execution order. A @pytest.fixture(autouse=True) that resets the object before each test makes the suite order-independent.",
+          "confidence": 0.88,
+          "unified_diff": "--- a/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py+++ b/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py@@ -4,6 +4,14 @@ \n \n class TestOrderingIssues:\n+\n+    @pytest.fixture(autouse=True)\n+    def reset_shared_state(self):\n+        \"\"\"Reset shared calculator before every test.\"\"\"\n+        from src.calculator import get_shared_calculator\n+        get_shared_calculator().clear()\n+        yield\n+        get_shared_calculator().clear()\n     \"\"\"Tests that depend on execution order.\"\"\"\n     \n     def test_first(self):\n"
+        },
+        {
+          "suggestion_id": "4893cf27-e624-41af-820f-73233387d64b",
+          "fix_type": "cleanup_addition",
+          "description": "Add teardown to reset shared state after each test",
+          "rationale": "Explicit cleanup prevents state from one test leaking into the next.",
+          "confidence": 0.8,
+          "unified_diff": null
+        }
+      ]
+    },
+    {
+      "fix_id": "113e449b-230c-46af-b02e-fa5a60d0f74d",
+      "test_name": "tests/test_network.py::TestEnvironmentIssues::test_random_failure",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py",
+      "status": "proposed",
+      "suggestions": [
+        {
+          "suggestion_id": "1dcb9aaa-7f0e-4bd6-a090-f3e85bdb0a52",
+          "fix_type": "code_change",
+          "description": "Seed the random generator for deterministic behaviour",
+          "rationale": "Calls to random.*() without a fixed seed produce different results on every run. random.seed(42) at the top of the test makes the sequence fully reproducible.",
+          "confidence": 0.95,
+          "unified_diff": "--- a/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py+++ b/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py@@ -18,6 +18,7 @@     def test_random_failure(self):\n         \"\"\"Test with random behavior - true flakiness.\"\"\"\n         # This is intentionally flaky for demo purposes\n+    random.seed(42)  # Fixed seed for reproducibility\n         if random.random() < 0.3:  # 30% failure rate\n             pytest.fail(\"Random failure for flaky test demonstration\")\n         \n"
+        },
+        {
+          "suggestion_id": "4e788ba7-374f-4055-a386-66fbf44d3198",
+          "fix_type": "mock_introduction",
+          "description": "Mock external / network dependencies",
+          "rationale": "Mocking makes tests deterministic and independent of environment state.",
+          "confidence": 0.88,
+          "unified_diff": "--- a/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py+++ b/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_network.py@@ -1,3 +1,4 @@+from unittest.mock import patch, MagicMock\n \"\"\"Tests with environment/network-related flakiness patterns.\"\"\"\n import pytest\n import os\n"
+        },
+        {
+          "suggestion_id": "4720beb3-2db2-47ec-9242-5aae94a3797d",
+          "fix_type": "code_change",
+          "description": "Skip test gracefully when external resource is unavailable",
+          "rationale": "pytest.skip() prevents false failures when the environment is incomplete.",
+          "confidence": 0.75,
+          "unified_diff": null
+        }
+      ]
+    },
+    {
+      "fix_id": "fb911725-9696-41b4-ad8d-f778ab5e1e77",
+      "test_name": "tests/test_order.py::TestOrderingIssues::test_shared_state_b",
+      "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py",
+      "status": "proposed",
+      "suggestions": [
+        {
+          "suggestion_id": "51ca20e0-fe89-4550-bf97-8157adb40287",
+          "fix_type": "isolation_fix",
+          "description": "Inject per-test fixture to eliminate shared-state dependency",
+          "rationale": "Tests that share a single global object depend on execution order. A @pytest.fixture(autouse=True) that resets the object before each test makes the suite order-independent.",
+          "confidence": 0.88,
+          "unified_diff": "--- a/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py+++ b/D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\tests\\test_order.py@@ -4,6 +4,14 @@ \n \n class TestOrderingIssues:\n+\n+    @pytest.fixture(autouse=True)\n+    def reset_shared_state(self):\n+        \"\"\"Reset shared calculator before every test.\"\"\"\n+        from src.calculator import get_shared_calculator\n+        get_shared_calculator().clear()\n+        yield\n+        get_shared_calculator().clear()\n     \"\"\"Tests that depend on execution order.\"\"\"\n     \n     def test_first(self):\n"
+        },
+        {
+          "suggestion_id": "5e514349-8288-4a4d-af68-8011c7b8367e",
+          "fix_type": "cleanup_addition",
+          "description": "Add teardown to reset shared state after each test",
+          "rationale": "Explicit cleanup prevents state from one test leaking into the next.",
+          "confidence": 0.8,
+          "unified_diff": null
+        }
+      ]
+    }
+  ],
+  "quarantine_audit": {
+    "report_id": "af49623d-08d9-4d17-9672-5c99dbb259ba",
+    "total_quarantined": 3,
+    "diagnosed_count": 0,
+    "fixable_count": 0,
+    "unexplained_count": 3,
+    "tests": [
+      {
+        "test_name": "test_timing_dependent",
+        "status": "unexplained",
+        "diagnosed": false,
+        "root_cause": null,
+        "confidence": null,
+        "fixable": false,
+        "fix_strategy": null,
+        "quarantine_reason": "Timing issue",
+        "source": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\QUARANTINE.md"
+      },
+      {
+        "test_name": "test_shared_state",
+        "status": "unexplained",
+        "diagnosed": false,
+        "root_cause": null,
+        "confidence": null,
+        "fixable": false,
+        "fix_strategy": null,
+        "quarantine_reason": "State leakage",
+        "source": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\QUARANTINE.md"
+      },
+      {
+        "test_name": "test_async_order",
+        "status": "unexplained",
+        "diagnosed": false,
+        "root_cause": null,
+        "confidence": null,
+        "fixable": false,
+        "fix_strategy": null,
+        "quarantine_reason": "Race condition",
+        "source": "D:\\FlakeGuard-main\\FlakeGuard-main\\sample-repo\\QUARANTINE.md"
+      }
+    ]
+  }
+}
