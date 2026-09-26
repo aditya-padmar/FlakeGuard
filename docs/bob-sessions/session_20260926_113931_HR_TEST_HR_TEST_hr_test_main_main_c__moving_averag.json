@@ -1,0 +1,35 @@
+{
+  "session_id": "933140f1-b009-4594-8d61-fa026f1a7ddb",
+  "timestamp": "2026-09-26T11:39:31.718620+00:00",
+  "test_name": "HR-TEST\\HR-TEST\\hr_test\\main\\main.c::moving_average",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_172aa2b4\\HR-TEST\\HR-TEST\\hr_test\\main\\main.c",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "medium",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.4,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Order dependency detected (40%): Line 1: Found shared_state pattern: 'static int moving_average(int value)'; Line 24: Found shared_state pattern: 'static void adc_init(void)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found shared_state pattern: 'static int moving_average(int value)'",
+      "source": "source_code",
+      "snippet": "static int moving_average(int value)",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 24: Found shared_state pattern: 'static void adc_init(void)'",
+      "source": "source_code",
+      "snippet": "static void adc_init(void)",
+      "line_number": 24
+    }
+  ],
+  "test_source_snippet": "static int moving_average(int value)\n{\n    filter_sum -= filter_buffer[filter_index];\n\n    filter_buffer[filter_index] = value;\n\n    filter_sum += value;\n\n    filter_index++;\n\n    if (filter_index >= FILTER_SIZE)\n    {\n        filter_index = 0;\n    }\n\n    return filter_sum / FILTER_SIZE;\n}\n\n\n/* =========================================================\n   ADC INITIALIZATION\n   ========================================================= */\n\nstatic void adc_init(void)\n{\n    adc_oneshot_unit_init_cfg_"
+}

@@ -1,0 +1,217 @@
+{
+  "session_id": "8838b378-4124-4ee9-be66-6174a0619773",
+  "timestamp": "2026-09-26T11:39:31.727554+00:00",
+  "test_name": "MPU6050_CLEAN\\main\\mpu6050.h::mpu6050",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_172aa2b4\\MPU6050_CLEAN\\main\\mpu6050.h",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 6: Found hardware_peripheral pattern: '// MPU6050 I2C Address (AD0 = GND)'; Line 7: Found hardware_peripheral pattern: '#define MPU6050_ADDR            0x68'; Line 9: Found hardware_peripheral pattern: '// MPU6050 Register Map'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 6: Found hardware_peripheral pattern: '// MPU6050 I2C Address (AD0 = GND)'",
+      "source": "source_code",
+      "snippet": "// MPU6050 I2C Address (AD0 = GND)",
+      "line_number": 6
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 7: Found hardware_peripheral pattern: '#define MPU6050_ADDR            0x68'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_ADDR            0x68",
+      "line_number": 7
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 9: Found hardware_peripheral pattern: '// MPU6050 Register Map'",
+      "source": "source_code",
+      "snippet": "// MPU6050 Register Map",
+      "line_number": 9
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 10: Found hardware_peripheral pattern: '#define MPU6050_REG_SMPLRT_DIV  0x19'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_SMPLRT_DIV  0x19",
+      "line_number": 10
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 11: Found hardware_peripheral pattern: '#define MPU6050_REG_CONFIG      0x1A'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_CONFIG      0x1A",
+      "line_number": 11
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 12: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_CONFIG 0x1B'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_CONFIG 0x1B",
+      "line_number": 12
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 13: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_CONFIG 0x1C'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_CONFIG 0x1C",
+      "line_number": 13
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 14: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_XOUT_H 0x3B'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_XOUT_H 0x3B",
+      "line_number": 14
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 15: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_XOUT_L 0x3C'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_XOUT_L 0x3C",
+      "line_number": 15
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 16: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_YOUT_H 0x3D'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_YOUT_H 0x3D",
+      "line_number": 16
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 17: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_YOUT_L 0x3E'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_YOUT_L 0x3E",
+      "line_number": 17
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 18: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_ZOUT_H 0x3F'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_ZOUT_H 0x3F",
+      "line_number": 18
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 19: Found hardware_peripheral pattern: '#define MPU6050_REG_ACCEL_ZOUT_L 0x40'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_ACCEL_ZOUT_L 0x40",
+      "line_number": 19
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 20: Found hardware_peripheral pattern: '#define MPU6050_REG_TEMP_OUT_H  0x41'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_TEMP_OUT_H  0x41",
+      "line_number": 20
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 21: Found hardware_peripheral pattern: '#define MPU6050_REG_TEMP_OUT_L  0x42'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_TEMP_OUT_L  0x42",
+      "line_number": 21
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 22: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_XOUT_H 0x43'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_XOUT_H 0x43",
+      "line_number": 22
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 23: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_XOUT_L 0x44'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_XOUT_L 0x44",
+      "line_number": 23
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 24: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_YOUT_H 0x45'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_YOUT_H 0x45",
+      "line_number": 24
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 25: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_YOUT_L 0x46'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_YOUT_L 0x46",
+      "line_number": 25
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 26: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_ZOUT_H 0x47'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_ZOUT_H 0x47",
+      "line_number": 26
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 27: Found hardware_peripheral pattern: '#define MPU6050_REG_GYRO_ZOUT_L 0x48'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_GYRO_ZOUT_L 0x48",
+      "line_number": 27
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 28: Found hardware_peripheral pattern: '#define MPU6050_REG_PWR_MGMT_1  0x6B'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_PWR_MGMT_1  0x6B",
+      "line_number": 28
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 29: Found hardware_peripheral pattern: '#define MPU6050_REG_WHO_AM_I    0x75'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_REG_WHO_AM_I    0x75",
+      "line_number": 29
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 32: Found hardware_peripheral pattern: '#define MPU6050_WHO_AM_I_VALUE  0x68'",
+      "source": "source_code",
+      "snippet": "#define MPU6050_WHO_AM_I_VALUE  0x68",
+      "line_number": 32
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 42: Found hardware_peripheral pattern: '} mpu6050_data_t;'",
+      "source": "source_code",
+      "snippet": "} mpu6050_data_t;",
+      "line_number": 42
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 44: Found hardware_peripheral pattern: '// Initialize MPU6050 sensor. Returns true on success.'",
+      "source": "source_code",
+      "snippet": "// Initialize MPU6050 sensor. Returns true on success.",
+      "line_number": 44
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 45: Found hardware_peripheral pattern: 'bool mpu6050_init(void);'",
+      "source": "source_code",
+      "snippet": "bool mpu6050_init(void);",
+      "line_number": 45
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 48: Found hardware_peripheral pattern: 'bool mpu6050_read(mpu6050_data_t *data);'",
+      "source": "source_code",
+      "snippet": "bool mpu6050_read(mpu6050_data_t *data);",
+      "line_number": 48
+    }
+  ],
+  "test_source_snippet": "#pragma once\n\n#include <stdint.h>\n#include <stdbool.h>\n\n// MPU6050 I2C Address (AD0 = GND)\n#define MPU6050_ADDR            0x68\n\n// MPU6050 Register Map\n#define MPU6050_REG_SMPLRT_DIV  0x19\n#define MPU6050_REG_CONFIG      0x1A\n#define MPU6050_REG_GYRO_CONFIG 0x1B\n#define MPU6050_REG_ACCEL_CONFIG 0x1C\n#define MPU6050_REG_ACCEL_XOUT_H 0x3B\n#define MPU6050_REG_ACCEL_XOUT_L 0x3C\n#define MPU6050_REG_ACCEL_YOUT_H 0x3D\n#define MPU6050_REG_ACCEL_YOUT_L 0x3E\n#define MPU6050_REG_ACCEL_ZOUT_H 0x3F\n#define "
+}

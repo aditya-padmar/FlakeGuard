@@ -1,0 +1,35 @@
+{
+  "session_id": "cbc71dd2-1f99-4271-a9aa-375635282c33",
+  "timestamp": "2026-09-26T11:42:50.569542+00:00",
+  "test_name": "Python\\Python\\scientific_stack_test.py::scientific_stack_test",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_TinyML_Workshop_dfbb45e2\\Python\\Python\\scientific_stack_test.py",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "medium",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.55
+  },
+  "reasoning": "Environment or unseeded randomness flakiness identified (55%).",
+  "evidence": [
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates environmental/external dependency: 'ci'",
+      "source": "test_name",
+      "snippet": "Python\\Python\\scientific_stack_test.py::scientific_stack_test",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'environment'",
+      "source": "error_message",
+      "snippet": "Test name indicates environmental/external dependency: 'ci'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import numpy \nimport pandas \nimport matplotlib \nimport scipy \nprint(\"NumPy Version     :\", numpy.__version__) \nprint(\"Pandas Version    :\", pandas.__version__) \nprint(\"Matplotlib Version:\", matplotlib.__version__) \nprint(\"SciPy Version     :\", scipy.__version__) \nprint(\"\\nScientific Python Environment Ready!\")"
+}
