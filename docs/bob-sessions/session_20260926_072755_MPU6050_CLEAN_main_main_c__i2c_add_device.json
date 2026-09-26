@@ -1,0 +1,91 @@
+{
+  "session_id": "8454e759-a557-4ee8-86fb-986d98bfa486",
+  "timestamp": "2026-09-26T07:27:55.001461+00:00",
+  "test_name": "MPU6050_CLEAN\\main\\main.c::i2c_add_device",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_53c2ff60\\MPU6050_CLEAN\\main\\main.c",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.55,
+    "ordering": 0.8,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 4: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'; Line 13: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);'; Line 31: Found hardware_peripheral pattern: 'i2c_master_dev_handle_t scan_handle = NULL;'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 4: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(dev_handle);'",
+      "source": "source_code",
+      "snippet": "i2c_master_bus_rm_device(dev_handle);",
+      "line_number": 4
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 13: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);'",
+      "source": "source_code",
+      "snippet": "esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);",
+      "line_number": 13
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 31: Found hardware_peripheral pattern: 'i2c_master_dev_handle_t scan_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "i2c_master_dev_handle_t scan_handle = NULL;",
+      "line_number": 31
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 32: Found hardware_peripheral pattern: 'if (i2c_master_bus_add_device(bus_handle, &scan_cfg, &scan_handle) == ESP_OK) {'",
+      "source": "source_code",
+      "snippet": "if (i2c_master_bus_add_device(bus_handle, &scan_cfg, &scan_handle) == ESP_OK) {",
+      "line_number": 32
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 34: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO_TICKS(50));'",
+      "source": "source_code",
+      "snippet": "esp_err_t ret = i2c_master_transmit_receive(scan_handle, &dummy, 1, &dummy, 1, pdMS_TO_TICKS(50));",
+      "line_number": 34
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 41: Found hardware_peripheral pattern: 'i2c_master_bus_rm_device(scan_handle);'",
+      "source": "source_code",
+      "snippet": "i2c_master_bus_rm_device(scan_handle);",
+      "line_number": 41
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 48: Found hardware_peripheral pattern: '// MPU6050 Low-Level I2C Read/Write'",
+      "source": "source_code",
+      "snippet": "// MPU6050 Low-Level I2C Read/Write",
+      "line_number": 48
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 50: Found hardware_peripheral pattern: 'static bool mpu6050_write_reg(uint8_t reg, uint8_t value)'",
+      "source": "source_code",
+      "snippet": "static bool mpu6050_write_reg(uint8_t reg, uint8_t value)",
+      "line_number": 50
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 53: Found hardware_peripheral pattern: 'esp_err_t ret = i2c_master_transmit(dev_handle, buf, 2, pdMS_TO_TICKS(1000));'",
+      "source": "source_code",
+      "snippet": "esp_err_t ret = i2c_master_transmit(dev_handle, buf, 2, pdMS_TO_TICKS(1000));",
+      "line_number": 53
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 60: Found hardware_peripheral pattern: 'static bool mpu6050_read_reg(uint8_t reg, uint8_t *value)'",
+      "source": "source_code",
+      "snippet": "static bool mpu6050_read_reg(uint8_t reg, uint8_t *value)",
+      "line_number": 60
+    }
+  ],
+  "test_source_snippet": "static bool i2c_add_device(uint16_t addr, uint32_t speed)\n{\n    if (dev_handle) {\n        i2c_master_bus_rm_device(dev_handle);\n        dev_handle = NULL;\n    }\n    i2c_device_config_t dev_config = {\n        .dev_addr_length = I2C_ADDR_BIT_LEN_7,\n        .device_address = addr,\n        .scl_speed_hz = speed,\n        .scl_wait_us = 0,\n    };\n    esp_err_t ret = i2c_master_bus_add_device(bus_handle, &dev_config, &dev_handle);\n    return (ret == ESP_OK);\n}\n\n// ======================================"
+}

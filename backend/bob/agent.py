@@ -97,6 +97,21 @@ class BobAgent:
         except Exception:
             pass
 
+        # Multi-language function block extraction fallback (C/C++, JS/TS, Go, Java)
+        func_patterns = [
+            rf"(?:void|int|bool|status_t|static\s+\w+)\s+{re.escape(clean_method)}\s*\([^)]*\)\s*\{{",
+            rf"(?:async\s+)?function\s+{re.escape(clean_method)}\s*\(",
+            rf"const\s+{re.escape(clean_method)}\s*=\s*(?:async\s*)?\([^)]*\)\s*=>",
+            rf"func\s+(?:\([^)]+\)\s+)?{re.escape(clean_method)}\s*\(",
+            rf"(?:public|private|protected)?\s+(?:static\s+)?[\w<>[\]]+\s+{re.escape(clean_method)}\s*\("
+        ]
+        for pat in func_patterns:
+            m = re.search(pat, content)
+            if m:
+                start_idx = m.start()
+                lines = content[start_idx:].splitlines()[:60]
+                return "\n".join(lines)
+
         return content
 
     async def classify_test(

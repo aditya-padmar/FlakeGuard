@@ -223,6 +223,9 @@ export const metricsApi = {
 // ── Repository Ingestion API (GitHub Clone & Local File Upload) ───────────────
 
 export interface PipelineAnalysisResult {
+  status?: string;
+  errors?: Array<{ code: string; message: string }>;
+  message?: string;
   pipeline_id: string;
   source_type: 'github' | 'upload' | 'local';
   repository: string;

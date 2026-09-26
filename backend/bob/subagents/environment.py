@@ -9,11 +9,21 @@ class EnvironmentSubagent:
     """Analyzes tests for environment, network, and non-determinism flakiness."""
 
     PATTERNS = {
-        "env_variable": r"os\.getenv|os\.environ|getenv\(|environ\[",
-        "network_call": r"requests\.|httpx\.|urllib|aiohttp|fetch\s*\(|https?://|api_url|socket\.",
-        "random_value": r"random\.random|random\.choice|random\.randint|random\.randrange|random\.shuffle",
-        "ci_check": r"os\.getenv\([\"']CI[\"']\)|is_ci",
-        "file_system": r"open\s*\(|Path\s*\(|tempfile\."
+        "env_variable": r"os\.getenv|os\.environ|getenv\(|environ\[|process\.env|System\.getenv|os\.Getenv",
+        "network_call": (
+            r"requests\.|httpx\.|urllib|aiohttp|fetch\s*\(|https?://|api_url|socket\.|"
+            r"axios\.|http\.Get|net\.Dial|curl"
+        ),
+        "hardware_peripheral": (
+            r"gpio_get_level|gpio_set_level|gpio_config|i2c_master_|spi_device_|"
+            r"mpu6050|adc1_get_raw|uart_read_bytes|esp_wifi_|pinMode|digitalRead"
+        ),
+        "random_value": (
+            r"random\.random|random\.choice|random\.randint|random\.randrange|random\.shuffle|"
+            r"Math\.random\(\)|rand\.Int|esp_random\(\)"
+        ),
+        "ci_check": r"os\.getenv\([\"']CI[\"']\)|is_ci|process\.env\.CI",
+        "file_system": r"open\s*\(|Path\s*\(|tempfile\.|fs\.readFile|ioutil\.ReadFile"
     }
 
     def __init__(self):

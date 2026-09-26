@@ -10,6 +10,8 @@ import DashboardView from './redesign/DashboardView';
 import PipelineView from './redesign/PipelineView';
 import AuthView from './redesign/AuthView';
 import AmbientBackground from './redesign/AmbientBackground';
+import SourcesPage from './redesign/SourcesPage';
+import { AnimatedThemeToggler } from "@/registry/magicui/animated-theme-toggler";
 import './redesign/experience.css';
 import './redesign/dashboard.css';
 
@@ -73,7 +75,7 @@ function Shell() {
   const runDemo = () => { startDemo(); navigate('/pipeline'); };
   const runLive = async (url: string, branch: string) => { const request = startLive(url, branch); navigate('/pipeline'); await request; };
   const rerun = () => { if (data.mode === 'demo') runDemo(); else navigate('/'); };
-  const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
+  const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname === '/sources' ? 'Repository sources' : location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
 
   if (isAuth) return <><a className="fg-skip-link" href="#main-content">Skip to content</a><main id="main-content"><AuthView mode={location.pathname === '/signup' ? 'signup' : 'login'} /></main></>;
 
@@ -98,7 +100,21 @@ function Shell() {
       <header className="fg-topbar">
         {isLanding ? <Brand /> : <div className="fg-breadcrumb"><button ref={navigationTrigger} className="fg-icon-button fg-mobile-only" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={19} /></button><span>Workspace</span><ChevronRight size={13} /><strong>{pageName}</strong></div>}
         {isLanding && <nav className="fg-public-nav" aria-label="Product navigation"><a href="#capabilities">Platform</a><a href="#interactive-demo">How it works</a><Link to="/dashboard">Explore workspace <ArrowUpRight size={12} /></Link></nav>}
-        <div className="fg-topbar-actions">{!isLanding && <span className={`fg-data-mode ${data.mode === 'demo' ? 'is-demo' : ''}`}><span className="fg-status-dot" />{process ? 'Analysis running' : data.mode === 'demo' ? 'Sample dataset' : 'API results'}</span>}{isLanding ? <><Link className="fg-signin-link" to="/login">Sign in</Link><Link to="/signup" className="fg-button fg-button-small">Get started <ArrowUpRight size={14} /></Link></> : <Link to="/" className="fg-button fg-button-small"><Plus size={15} />New analysis</Link>}</div>
+        <div className="fg-topbar-actions">
+          {!isLanding && <span className={`fg-data-mode ${data.mode === 'demo' ? 'is-demo' : ''}`}><span className="fg-status-dot" />{process ? 'Analysis running' : data.mode === 'demo' ? 'Sample dataset' : 'API results'}</span>}
+          {isLanding ? (
+            <>
+              <AnimatedThemeToggler />
+              <Link className="fg-signin-link" to="/login">Sign in</Link>
+              <Link to="/signup" className="fg-button fg-button-small">Get started <ArrowUpRight size={14} /></Link>
+            </>
+          ) : (
+            <>
+              <AnimatedThemeToggler />
+              <Link to="/" className="fg-button fg-button-small"><Plus size={15} />New analysis</Link>
+            </>
+          )}
+        </div>
       </header>
       <main id="main-content" className={isLanding ? 'fg-public-main' : 'fg-workspace-main'}>
         {helpOpen && !isLanding && <section className="fg-help-panel fg-panel"><div><strong>From flaky to trustworthy.</strong><p>Start an analysis, inspect the evidence, then review a suggested patch. Sample runs and validations are simulations; real repository analysis requires the backend. No fixes are auto-merged.</p></div><button className="fg-icon-button" aria-label="Close workspace guide" onClick={() => setHelpOpen(false)}><X size={16} /></button></section>}
@@ -114,7 +130,7 @@ function Shell() {
             <Route path="/pipeline" element={process ? <PipelineView {...process} onCancel={() => { cancel(); navigate('/'); }} /> : <section className="fg-not-found"><span className="fg-eyebrow">PIPELINE / STANDING BY</span><h1>Ready for the next investigation.</h1><p className="fg-source-intro">No analysis is running. Your current results are unchanged.</p><Link to="/" className="fg-button fg-button-primary">Analyze a repository <ArrowUpRight size={15} /></Link><button className="fg-button" style={{ marginLeft: 12 }} onClick={runDemo}>Start sample demo</button></section>} />
             <Route path="/tools/remediation" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><RemediationTools /></div>} />
             <Route path="/tools/audit" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><AuditTools /></div>} />
-            <Route path="/sources" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">REPOSITORY SOURCES</div><h1>Bring your test suite.</h1><p className="fg-source-intro">Analyze a GitHub repository, upload a test archive, or use a path on your backend server.</p><RepositorySources /></div>} />
+            <Route path="/sources" element={<SourcesPage><RepositorySources /></SourcesPage>} />
             <Route path="*" element={<div className="fg-not-found"><span className="fg-eyebrow">404 / SIGNAL LOST</span><h1>This page isn’t in the pipeline.</h1><Link className="fg-button fg-button-primary" to="/"><ArrowLeft size={16} />Back to launchpad</Link></div>} />
           </Routes></Suspense>
         </motion.div></AnimatePresence>

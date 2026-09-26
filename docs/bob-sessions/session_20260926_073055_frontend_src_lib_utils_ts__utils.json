@@ -1,0 +1,35 @@
+{
+  "session_id": "19ccd5e6-7369-4e42-82be-abbec323230c",
+  "timestamp": "2026-09-26T07:30:55.632775+00:00",
+  "test_name": "frontend\\src\\lib\\utils.ts::utils",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_3677ebe9\\frontend\\src\\lib\\utils.ts",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.75
+  },
+  "reasoning": "Environment/network dependency detected (75%): Line 10: Found random_value pattern: 'return Math.random().toString(36).substring(2, 9);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 10: Found random_value pattern: 'return Math.random().toString(36).substring(2, 9);'",
+      "source": "source_code",
+      "snippet": "return Math.random().toString(36).substring(2, 9);",
+      "line_number": 10
+    },
+    {
+      "type": "missing_pattern",
+      "description": "Pseudorandom generator used without explicit deterministic seed",
+      "source": "source_code",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import { clsx, type ClassValue } from 'clsx';\nimport { twMerge } from 'tailwind-merge';\nimport { format } from 'date-fns';\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs));\n}\n\nexport function generateId() {\n  return Math.random().toString(36).substring(2, 9);\n}\n\n/**\n * Returns current Date adjusted explicitly to Indian Standard Time (IST, UTC+5:30)\n */\nexport function getISTDate(): Date {\n  const now = new Date();\n  const utcMs = now.getTime() + (now.getTimezoneOffse"
+}

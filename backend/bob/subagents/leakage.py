@@ -9,10 +9,26 @@ class LeakageSubagent:
     """Analyzes tests for state leakage issues."""
 
     PATTERNS = {
-        "shared_instance": r"get_shared_|shared_instance|_instance\s*=|singleton",
-        "global_mutation": r"global\s+\w+|^[A-Z_]{3,}\s*=",
-        "state_mutation": r"calc\.add|calc\.clear|calc\.subtract|\.append\(|\.pop\(|\.update\(",
-        "missing_teardown": r"def setup|@pytest\.fixture(?!.*yield)"
+        "shared_instance": (
+            r"get_shared_|shared_instance|_instance\s*=|singleton|"
+            r"getInstance\s*\(|sharedHandler|globalConfig"
+        ),
+        "global_mutation": (
+            r"global\s+\w+|^[A-Z_]{3,}\s*=|"
+            r"\w+\.static_field\s*=|window\.\w+\s*="
+        ),
+        "state_mutation": (
+            r"calc\.add|calc\.clear|calc\.subtract|\.append\(|\.pop\(|\.update\(|"
+            r"\.push\(|\.splice\(|\.add\(|\.set\(|gpio_set_direction|gpio_set_level"
+        ),
+        "resource_leak": (
+            r"malloc\s*\(|calloc\s*\(|fopen\s*\(|open\s*\(|socket\s*\(|"
+            r"new\s+WebSocket|addEventListener|fs\.open"
+        ),
+        "missing_teardown": (
+            r"def setup|@pytest\.fixture(?!.*yield)|"
+            r"beforeEach|beforeAll|@BeforeEach(?!.*@AfterEach)"
+        )
     }
 
     def __init__(self):

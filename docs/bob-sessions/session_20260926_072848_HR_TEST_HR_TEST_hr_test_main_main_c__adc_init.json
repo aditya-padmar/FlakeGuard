@@ -1,0 +1,35 @@
+{
+  "session_id": "4596f88f-a64c-4054-ada5-c16f1cba2f3b",
+  "timestamp": "2026-09-26T07:28:48.885544+00:00",
+  "test_name": "HR-TEST\\HR-TEST\\hr_test\\main\\main.c::adc_init",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_caf105dc\\GPIO-TEST-master\\HR-TEST\\HR-TEST\\hr_test\\main\\main.c",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "medium",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.4,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Order dependency detected (40%): Line 1: Found shared_state pattern: 'static void adc_init(void)'; Line 54: Found shared_state pattern: 'static int read_sensor(void)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found shared_state pattern: 'static void adc_init(void)'",
+      "source": "source_code",
+      "snippet": "static void adc_init(void)",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 54: Found shared_state pattern: 'static int read_sensor(void)'",
+      "source": "source_code",
+      "snippet": "static int read_sensor(void)",
+      "line_number": 54
+    }
+  ],
+  "test_source_snippet": "static void adc_init(void)\n{\n    adc_oneshot_unit_init_cfg_t adc_config = {\n\n        .unit_id = ADC_UNIT_1,\n\n        .ulp_mode = ADC_ULP_MODE_DISABLE\n    };\n\n\n    ESP_ERROR_CHECK(\n\n        adc_oneshot_new_unit(\n\n            &adc_config,\n\n            &adc_handle\n        )\n    );\n\n\n    adc_oneshot_chan_cfg_t channel_config = {\n\n        .bitwidth = ADC_BITWIDTH_DEFAULT,\n\n        .atten = ADC_ATTEN_DB_12\n    };\n\n\n    ESP_ERROR_CHECK(\n\n        adc_oneshot_config_channel(\n\n            adc_handle,\n\n   "
+}

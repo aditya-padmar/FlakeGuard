@@ -1,0 +1,42 @@
+{
+  "session_id": "a23c43b6-8416-4dde-bd34-149ffe310d09",
+  "timestamp": "2026-09-26T07:28:16.517670+00:00",
+  "test_name": "GPIO Toggle ESP32 RGB C3\\ESP32 button toggles onboard LED.c::loop",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_265b1f0d\\GPIO-TEST-master\\GPIO Toggle ESP32 RGB C3\\ESP32 button toggles onboard LED.c",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.55,
+    "ordering": 0.35,
+    "state_leakage": 0.25,
+    "environment": 0.75
+  },
+  "reasoning": "Environment/network dependency detected (75%): Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'; Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'; Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 28: Found hardware_peripheral pattern: 'pinMode(LED_PIN, OUTPUT);'",
+      "source": "source_code",
+      "snippet": "pinMode(LED_PIN, OUTPUT);",
+      "line_number": 28
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 29: Found hardware_peripheral pattern: 'pinMode(BUTTON_PIN, INPUT_PULLUP);'",
+      "source": "source_code",
+      "snippet": "pinMode(BUTTON_PIN, INPUT_PULLUP);",
+      "line_number": 29
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 35: Found hardware_peripheral pattern: 'int reading = digitalRead(BUTTON_PIN);'",
+      "source": "source_code",
+      "snippet": "int reading = digitalRead(BUTTON_PIN);",
+      "line_number": 35
+    }
+  ],
+  "test_source_snippet": "// ESP32 button toggles onboard LED\n\n#ifndef LED_BUILTIN\n#define LED_BUILTIN 2\n#endif\n\nconst int LED_PIN = LED_BUILTIN;\nconst int BUTTON_PIN = 0;  // Common ESP32 BOOT/user button pin on many boards\n\nconst bool LED_ACTIVE_LOW = true;  // Many ESP32 onboard LEDs are active-low\n\nbool ledState = false;\n\nint lastButtonReading = HIGH;\nint stableButtonState = HIGH;\nunsigned long lastDebounceTime = 0;\nconst unsigned long debounceDelay = 50;\n\nvoid setLed(bool on) {\n  if (LED_ACTIVE_LOW) {\n    digitalWri"
+}

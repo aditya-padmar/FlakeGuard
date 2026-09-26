@@ -1,0 +1,56 @@
+{
+  "session_id": "aa977e4a-8fc3-49fe-ba79-bf8ab5c06df1",
+  "timestamp": "2026-09-26T07:29:53.296404+00:00",
+  "test_name": "GPIO Toggle ESP32 C6\\main\\main.c::app_main",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_78bbdfd6\\GPIO Toggle ESP32 C6\\main\\main.c",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.75,
+    "ordering": 0.0,
+    "state_leakage": 0.2,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 5: Found hardware_peripheral pattern: 'gpio_config_t led_conf = {'; Line 12: Found hardware_peripheral pattern: 'ESP_ERROR_CHECK(gpio_config(&led_conf));'; Line 13: Found hardware_peripheral pattern: 'gpio_set_level(LED_GPIO, 0);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 5: Found hardware_peripheral pattern: 'gpio_config_t led_conf = {'",
+      "source": "source_code",
+      "snippet": "gpio_config_t led_conf = {",
+      "line_number": 5
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 12: Found hardware_peripheral pattern: 'ESP_ERROR_CHECK(gpio_config(&led_conf));'",
+      "source": "source_code",
+      "snippet": "ESP_ERROR_CHECK(gpio_config(&led_conf));",
+      "line_number": 12
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 13: Found hardware_peripheral pattern: 'gpio_set_level(LED_GPIO, 0);'",
+      "source": "source_code",
+      "snippet": "gpio_set_level(LED_GPIO, 0);",
+      "line_number": 13
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 15: Found hardware_peripheral pattern: 'gpio_config_t btn_conf = {'",
+      "source": "source_code",
+      "snippet": "gpio_config_t btn_conf = {",
+      "line_number": 15
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 22: Found hardware_peripheral pattern: 'ESP_ERROR_CHECK(gpio_config(&btn_conf));'",
+      "source": "source_code",
+      "snippet": "ESP_ERROR_CHECK(gpio_config(&btn_conf));",
+      "line_number": 22
+    }
+  ],
+  "test_source_snippet": "void app_main(void)\n{\n    ESP_LOGI(TAG, \"Starting button LED control - ESP32-C6 (GPIO%d LED, GPIO%d Button)\", LED_GPIO, BOOT_BUTTON_GPIO);\n\n    gpio_config_t led_conf = {\n        .pin_bit_mask = (1ULL << LED_GPIO),\n        .mode = GPIO_MODE_OUTPUT,\n        .pull_up_en = GPIO_PULLUP_DISABLE,\n        .pull_down_en = GPIO_PULLDOWN_DISABLE,\n        .intr_type = GPIO_INTR_DISABLE,\n    };\n    ESP_ERROR_CHECK(gpio_config(&led_conf));\n    gpio_set_level(LED_GPIO, 0);\n\n    gpio_config_t btn_conf = {\n    "
+}

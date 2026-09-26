@@ -9,10 +9,29 @@ class TimingSubagent:
     """Analyzes tests for timing-related flakiness patterns."""
 
     PATTERNS = {
-        "sleep": r"time\.sleep\s*\(|asyncio\.sleep\s*\(|sleep\s*\(",
-        "timeout": r"timeout\s*=\s*\d+|wait\s*=\s*\d+|wait_for\s*\(",
-        "timing_assertion": r"assert\s+elapsed|assert.*took.*long|assert.*<.*0\.\d+|assert.*duration",
-        "time_measurement": r"time\.time\(\)|time\.perf_counter\(\)|start\s*=\s*time|elapsed\s*="
+        "sleep": (
+            r"time\.sleep\s*\(|asyncio\.sleep\s*\(|sleep\s*\(|"
+            r"vTaskDelay\s*\(|delay\s*\(|usleep\s*\(|delayMicroseconds\s*\(|ets_delay_us\s*\(|"
+            r"setTimeout\s*\(|setInterval\s*\(|waitForTimeout\s*\(|"
+            r"Thread\.sleep\s*\(|time\.Sleep\s*\("
+        ),
+        "timeout": (
+            r"timeout\s*=\s*\d+|wait\s*=\s*\d+|wait_for\s*\(|"
+            r"portMAX_DELAY|pdMS_TO_TICKS\s*\(|xQueueReceive.*timeout|"
+            r"waitFor\s*\(|await\s+page\.waitFor|context\.WithTimeout"
+        ),
+        "timing_assertion": (
+            r"assert\s+elapsed|assert.*took.*long|assert.*<.*0\.\d+|assert.*duration|"
+            r"expect\(.*took|expect\(.*duration|TEST_ASSERT.*delay"
+        ),
+        "time_measurement": (
+            r"time\.time\(\)|time\.perf_counter\(\)|start\s*=\s*time|elapsed\s*=|"
+            r"esp_timer_get_time\s*\(|millis\s*\(\)|micros\s*\(\)|performance\.now\(\)|Date\.now\(\)|time\.Now\(\)"
+        ),
+        "busy_wait": (
+            r"while\s*\(\s*!\s*\w+\s*\)|while\s*\(\s*\w+\s*==\s*0\s*\)|while\s*\(\s*gpio_get_level|"
+            r"while\s*\(\s*true\s*\)\s*\{?\s*\}|for\s*\(\s*;\s*;\s*\)"
+        )
     }
 
     def __init__(self):

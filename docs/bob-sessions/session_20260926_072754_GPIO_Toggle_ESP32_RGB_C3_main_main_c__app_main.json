@@ -1,0 +1,56 @@
+{
+  "session_id": "1ba34c81-8cf0-4a16-97da-ffb8029801be",
+  "timestamp": "2026-09-26T07:27:54.992435+00:00",
+  "test_name": "GPIO Toggle ESP32 RGB C3\\main\\main.c::app_main",
+  "file_path": "D:\\FlakeGuard\\data\\repos\\jostansaldanha58-gif_GPIO-TEST_53c2ff60\\GPIO Toggle ESP32 RGB C3\\main\\main.c",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 1.0,
+    "ordering": 0.35,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "High probability of timing flakiness (100%): Line 33: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'; Line 36: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'; Line 49: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 33: Found time_measurement pattern: 'last_debounce_time_us = esp_timer_get_time();'",
+      "source": "source_code",
+      "snippet": "last_debounce_time_us = esp_timer_get_time();",
+      "line_number": 33
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 36: Found time_measurement pattern: 'const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;'",
+      "source": "source_code",
+      "snippet": "const int64_t elapsed_us = esp_timer_get_time() - last_debounce_time_us;",
+      "line_number": 36
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 49: Found sleep pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(10));",
+      "line_number": 49
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 49: Found timeout pattern: 'vTaskDelay(pdMS_TO_TICKS(10));'",
+      "source": "source_code",
+      "snippet": "vTaskDelay(pdMS_TO_TICKS(10));",
+      "line_number": 49
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (7/10 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "void app_main(void)\n{\n    const gpio_config_t led_config = {\n        .pin_bit_mask = 1ULL << LED_PIN,\n        .mode = GPIO_MODE_OUTPUT,\n        .pull_up_en = GPIO_PULLUP_DISABLE,\n        .pull_down_en = GPIO_PULLDOWN_DISABLE,\n        .intr_type = GPIO_INTR_DISABLE,\n    };\n    const gpio_config_t button_config = {\n        .pin_bit_mask = 1ULL << BUTTON_PIN,\n        .mode = GPIO_MODE_INPUT,\n        .pull_up_en = GPIO_PULLUP_ENABLE,\n        .pull_down_en = GPIO_PULLDOWN_DISABLE,\n        .intr_type "
+}

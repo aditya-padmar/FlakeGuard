@@ -1,10 +1,9 @@
 """Test executor module for executing multi-run plans with early stopping."""
 import asyncio
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import random
 
-from backend.harness.runner import TestRunner
 from backend.harness.analyzer import TestAnalyzer
 from backend.models.detection import TestRun
 
@@ -21,7 +20,7 @@ class SingleRunConfig:
 class TestExecutor:
     """Executes planned test runs with controlled variation and early-stop detection."""
 
-    def __init__(self, runner: TestRunner, analyzer: Optional[TestAnalyzer] = None):
+    def __init__(self, runner: Any, analyzer: Optional[TestAnalyzer] = None):
         self.runner = runner
         self.analyzer = analyzer or TestAnalyzer()
 
