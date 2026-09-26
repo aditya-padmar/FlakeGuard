@@ -47,18 +47,18 @@ export default function TestInventory({ tests, onSelectTest }: TestInventoryProp
           <thead>
             <tr>
               <th onClick={() => handleSort('test_name')}>
-                Test Name {sortBy === 'test_name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                Test Name {sortBy === 'test_name' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
               </th>
               <th onClick={() => handleSort('file_path')}>
-                File {sortBy === 'file_path' && (sortOrder === 'asc' ? '↑' : '↓')}
+                File {sortBy === 'file_path' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
               </th>
               <th onClick={() => handleSort('flake_rate')}>
-                Flake Rate {sortBy === 'flake_rate' && (sortOrder === 'asc' ? '↑' : '↓')}
+                Flake Rate {sortBy === 'flake_rate' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
               </th>
               <th onClick={() => handleSort('total_runs')}>
-                Runs {sortBy === 'total_runs' && (sortOrder === 'asc' ? '↑' : '↓')}
+                Runs {sortBy === 'total_runs' && (sortOrder === 'asc' ? ' ▲' : ' ▼')}
               </th>
-              <th>Status</th>
+              <th>Status History</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -70,12 +70,12 @@ export default function TestInventory({ tests, onSelectTest }: TestInventoryProp
                 <td>
                   <span 
                     className="flake-rate"
-                    style={{ color: getFlakeRateColor(test.flake_rate) }}
+                    style={{ color: getFlakeRateColor(test.flake_rate), fontWeight: 700 }}
                   >
                     {(test.flake_rate * 100).toFixed(1)}%
                   </span>
                 </td>
-                <td>{test.total_runs}</td>
+                <td style={{ fontWeight: 600 }}>{test.total_runs}</td>
                 <td>
                   <div className="status-badges">
                     {test.status_history.slice(-5).map((status, i) => (
@@ -84,7 +84,7 @@ export default function TestInventory({ tests, onSelectTest }: TestInventoryProp
                         className={`status-badge ${status}`}
                         title={status}
                       >
-                        {status === 'passed' ? '✓' : '✗'}
+                        {status === 'passed' ? 'PASS' : 'FAIL'}
                       </span>
                     ))}
                   </div>

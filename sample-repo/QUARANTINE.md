@@ -6,14 +6,14 @@ This file tracks tests that have been quarantined due to flakiness.
 
 | Test | Reason | Quarantined Date | Runs Until Review |
 |------|--------|------------------|-------------------|
-| test_timing_dependent | Timing issue | 2024-01-15 | 10 |
-| test_shared_state | State leakage | 2024-01-20 | 8 |
+| test_worker_thread_race | Timing issue | 2024-01-15 | 10 |
+| test_expects_clean_inventory | State leakage | 2024-01-20 | 8 |
 
 ## Resolved Quarantines
 
 | Test | Reason | Resolved Date | Fix Applied |
 |------|--------|---------------|-------------|
-| test_async_order | Race condition | 2024-01-10 | Added proper async await |
+| test_depends_on_retry_limit | Order dependency | 2024-01-10 | Added proper test ordering and fixture isolation |
 
 ## Quarantine Policy
 

@@ -328,3 +328,39 @@
 - **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.35, 'state_leakage': 0.85, 'environment': 0.0}`
 - **Reasoning**: High probability of timing flakiness (100%): Line 13: Found time_measurement pattern: 'start = time.time()'; Line 17: Found time_measurement pattern: 'elapsed = time.time() - start'; Line 20: Found timing_assertion pattern: 'assert elapsed < 0.001, f"Operation took too long: {elapsed}s"'.
 - **Evidence Count**: 5 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `ENVIRONMENT` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.8}`
+- **Reasoning**: Environment/network dependency detected (80%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 3 items identified
+
+### Session: `test_completely_opaque` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `UNKNOWN` (LOW confidence)
+- **Subagent Scores**: `{'timing': 0.0, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.0}`
+- **Reasoning**: Classified as unknown based on parallel subagent pattern analysis.
+- **Evidence Count**: 0 items identified
+
+### Session: `TestTimingIssues::test_worker_thread_race` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 1.0, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 4 items identified
+
+### Session: `TestEnvironmentIssues::test_region_dependent_totals` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `ENVIRONMENT` (MEDIUM confidence)
+- **Subagent Scores**: `{'timing': 0.15, 'ordering': 0.0, 'state_leakage': 0.0, 'environment': 0.55}`
+- **Reasoning**: Environment/network dependency detected (55%): Line 3: Found env_variable pattern: 'region = os.environ.get("SALES_REGION", "US")'.
+- **Evidence Count**: 2 items identified
+
+### Session: `TestSample::test_example` (2026-09-26 01:34:10 UTC)
+- **Verdict**: `TIMING` (HIGH confidence)
+- **Subagent Scores**: `{'timing': 0.75, 'ordering': 0.0, 'state_leakage': 0.2, 'environment': 0.6}`
+- **Reasoning**: High probability of timing flakiness (75%): Line 17: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 24: Found timeout pattern: 'done.wait(timeout=0.03)'.
+- **Evidence Count**: 3 items identified

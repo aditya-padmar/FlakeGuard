@@ -7,18 +7,15 @@ The validator is deliberately non-destructive:
 - It runs the test N times pointing pytest at the patched copy.
 - It restores the original file unconditionally (even on error).
 """
-from __future__ import annotations
-
 import subprocess
-import tempfile
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from pydantic import BaseModel
 
-@dataclass
-class ValidationResult:
+
+class ValidationResult(BaseModel):
     """Outcome of validating a proposed fix."""
 
     fix_id: str
