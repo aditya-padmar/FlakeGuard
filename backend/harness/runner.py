@@ -16,6 +16,69 @@ from backend.models.detection import TestRun, TestExecution, TestStatus
 
 logger = logging.getLogger(__name__)
 
+# The FlakeGuard project root (where *this* file lives under backend/harness/).
+_FLAKEGUARD_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def normalize_pytest_target(raw: str, repo_root: Path) -> str:
+    """
+    Normalize a pytest node ID or file path so it is relative to repo_root.
+
+    Examples (repo_root = C:/Projects/FlakeGuard/data/repos/box_flaky_123):
+        "data/repos/box_flaky_123/test/t.py::Cls::fn"
+            → "test/t.py::Cls::fn"
+        "C:\\Projects\\FlakeGuard\\data\\repos\\box_flaky_123\\test\\t.py::Cls::fn"
+            → "test/t.py::Cls::fn"
+        "test/t.py::Cls::fn"           (already relative) → "test/t.py::Cls::fn"
+        "tests/t.py"                   (already relative) → "tests/t.py"
+
+    Only the filesystem portion *before* the first "::" is path-normalized.
+    The class/function suffix is preserved verbatim.
+    """
+    # Split on the first "::" to isolate the filesystem part
+    if "::" in raw:
+        sep_idx = raw.index("::")
+        fs_part = raw[:sep_idx]
+        tail = raw[sep_idx:]       # includes the leading "::"
+    else:
+        fs_part = raw
+        tail = ""
+
+    # Normalise separators to the local OS convention for Path() parsing
+    fs_path = Path(fs_part)
+
+    # -----------------------------------------------------------------------
+    # Case 1: absolute path
+    # -----------------------------------------------------------------------
+    if fs_path.is_absolute():
+        try:
+            rel = fs_path.relative_to(repo_root)
+            return rel.as_posix() + tail
+        except ValueError:
+            # Absolute but NOT under repo_root — return as-is
+            return raw
+
+    # -----------------------------------------------------------------------
+    # Case 2: relative path that encodes the repo dir as a prefix
+    #   e.g. "data/repos/box_flaky_123/test/t.py"
+    #   when cwd is C:\Projects\FlakeGuard and repo_root is
+    #   C:\Projects\FlakeGuard\data\repos\box_flaky_123
+    # -----------------------------------------------------------------------
+    # Strategy: join with repo_root's parent hierarchy and try relative_to.
+    # Walk up ancestors of repo_root to find if the forward path matches.
+    try:
+        cwd_candidate = Path.cwd() / fs_path
+        resolved = cwd_candidate.resolve()
+        rel = resolved.relative_to(repo_root.resolve())
+        return rel.as_posix() + tail
+    except (ValueError, OSError):
+        pass
+
+    # -----------------------------------------------------------------------
+    # Case 3: already a clean repo-relative path — just normalise separators
+    # -----------------------------------------------------------------------
+    return fs_path.as_posix() + tail
+
 
 class TestRunner:
     """Executes tests with controlled ordering, environment chaos, jitter, and parallelism."""
@@ -25,11 +88,18 @@ class TestRunner:
         self._collected_test_ids: Optional[List[str]] = None
         self._pytest_plugins_verified = False
         self._json_report_available = False
+        # True when this runner operates on FlakeGuard's own test suite
+        self._is_flakeguard_repo = (self.repo_path == _FLAKEGUARD_ROOT)
 
-    def verify_pytest_environment(self) -> Dict[str, any]:
+    # ------------------------------------------------------------------
+    # Environment verification
+    # ------------------------------------------------------------------
+
+    def verify_pytest_environment(self) -> Dict[str, object]:
         """
         Verify pytest environment and check for required plugins.
-        Returns dict with status and available features.
+        Returns dict with: verified, json_report, pytest_version,
+                           python_executable, warnings.
         """
         if self._pytest_plugins_verified:
             import pytest as _pytest
@@ -38,86 +108,142 @@ class TestRunner:
                 "json_report": self._json_report_available,
                 "python_executable": sys.executable,
                 "warnings": [],
-                "pytest_version": _pytest.__version__
+                "pytest_version": _pytest.__version__,
             }
 
-        result = {
+        result: Dict[str, object] = {
             "verified": False,
             "json_report": False,
             "pytest_version": None,
             "python_executable": sys.executable,
-            "warnings": []
+            "warnings": [],
         }
 
         try:
-            # Check if pytest is importable
             import pytest
             result["pytest_version"] = pytest.__version__
-            
-            # Check for json-report plugin by running pytest --help
-            help_cmd = [sys.executable, "-m", "pytest", "--help"]
+
             help_result = subprocess.run(
-                help_cmd,
+                [sys.executable, "-m", "pytest", "--help"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
-            
             if "--json-report" in help_result.stdout:
                 result["json_report"] = True
                 self._json_report_available = True
             else:
-                result["warnings"].append(
+                result["warnings"].append(  # type: ignore[union-attr]
                     "pytest-json-report plugin not available. "
                     "Install with: pip install pytest-json-report"
                 )
-                
+
             result["verified"] = True
             self._pytest_plugins_verified = True
-            
+
             logger.info(
-                f"Pytest environment verified: pytest={result['pytest_version']}, "
-                f"json-report={result['json_report']}, python={sys.executable}"
+                "Pytest environment verified: pytest=%s, json-report=%s, "
+                "python=%s, repo=%s",
+                result["pytest_version"],
+                result["json_report"],
+                sys.executable,
+                self.repo_path,
             )
-            
-        except ImportError as e:
-            result["warnings"].append(f"pytest not importable: {e}")
-            logger.error(f"Pytest import failed: {e}")
-        except Exception as e:
-            result["warnings"].append(f"Verification failed: {e}")
-            logger.error(f"Pytest verification failed: {e}")
+
+        except ImportError as exc:
+            result["warnings"].append(f"pytest not importable: {exc}")  # type: ignore[union-attr]
+            logger.error("Pytest import failed: %s", exc)
+        except Exception as exc:
+            result["warnings"].append(f"Verification failed: {exc}")  # type: ignore[union-attr]
+            logger.error("Pytest verification failed: %s", exc)
 
         return result
 
+    # ------------------------------------------------------------------
+    # PYTHONPATH helpers
+    # ------------------------------------------------------------------
+
+    def _build_collection_env(self) -> Dict[str, str]:
+        """
+        Build environment for the pytest --collect-only subprocess.
+
+        PYTHONPATH always includes:
+          1. The target repo root  (so its own source packages import correctly)
+          2. FlakeGuard root       (so backend.harness.pytest_compat is importable
+                                    *only when running FlakeGuard's own suite*)
+        """
+        env = os.environ.copy()
+        parts: List[str] = [str(self.repo_path)]
+        if self._is_flakeguard_repo:
+            parts.append(str(_FLAKEGUARD_ROOT))
+        existing = env.get("PYTHONPATH", "")
+        if existing:
+            parts.append(existing)
+        env["PYTHONPATH"] = os.pathsep.join(parts)
+        return env
+
+    def _build_execution_env(
+        self,
+        run_index: int,
+        ordering_seed: Optional[int],
+        jitter_ms: int,
+        state_dir: Path,
+        env_chaos: Optional[Dict[str, str]],
+    ) -> Dict[str, str]:
+        """Build environment for the actual pytest execution subprocess."""
+        env = self._build_collection_env()
+        env["FLAKEGUARD_STATE_DIR"] = str(state_dir)
+        env["FG_RUN_INDEX"] = str(run_index)
+        env["FG_ORDERING_SEED"] = str(ordering_seed if ordering_seed is not None else 0)
+        env["FG_JITTER_MS"] = str(jitter_ms)
+        if env_chaos:
+            env.update(env_chaos)
+        return env
+
+    # ------------------------------------------------------------------
+    # Test collection
+    # ------------------------------------------------------------------
+
     def collect_test_ids(self) -> List[str]:
-        """Collect and cache test node IDs from repository."""
+        """
+        Collect and cache pytest node IDs from the target repository.
+
+        Node IDs are always returned as paths relative to self.repo_path,
+        using forward slashes (POSIX style), e.g.:
+            test/test_foo.py::MyClass::test_bar
+        """
         if self._collected_test_ids is not None:
             return self._collected_test_ids
 
-        # Verify pytest environment first
         env_check = self.verify_pytest_environment()
         if not env_check["verified"]:
             raise RuntimeError(
                 f"Pytest environment verification failed: {env_check['warnings']}"
             )
 
-        # Ensure project root is in PYTHONPATH
-        project_root = Path(__file__).resolve().parent.parent.parent
-        env = os.environ.copy()
-        curr_pypath = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = f"{project_root}{os.pathsep}{curr_pypath}" if curr_pypath else str(project_root)
+        env = self._build_collection_env()
 
         cmd = [
-            sys.executable,
-            "-m",
-            "pytest",
-            "-p",
-            "backend.harness.pytest_compat",
-            "--collect-only",
-            "-q",
-            "-o",
-            "addopts=",
+            sys.executable, "-m", "pytest",
+            # --rootdir forces pytest to anchor at the target repo root,
+            # preventing it from walking up and finding FlakeGuard's pytest.ini.
+            f"--rootdir={self.repo_path}",
+            "--collect-only", "-q",
+            # Clear any inherited addopts that might add unknown flags
+            "-o", "addopts=",
         ]
+
+        # Only load the compat plugin when running FlakeGuard's own suite.
+        # Loading it for external repos causes pytest to resolve paths relative
+        # to the FlakeGuard project root instead of the target repo root.
+        if self._is_flakeguard_repo:
+            cmd += ["-p", "backend.harness.pytest_compat"]
+
+        logger.debug(
+            "Collecting tests: cwd=%s, rootdir=%s, cmd=%s",
+            self.repo_path, self.repo_path, " ".join(cmd),
+        )
+
         res = subprocess.run(
             cmd,
             cwd=str(self.repo_path),
@@ -126,52 +252,64 @@ class TestRunner:
             text=True,
         )
 
-        # Handle exit code 5 (no tests collected)
+        # exit code 5 = no tests collected
         if res.returncode == 5:
-            logger.warning(f"No tests collected from {self.repo_path}")
-            return []
-
-        node_ids: List[str] = []
-        for line in res.stdout.splitlines():
-            line = line.strip()
-            if not line or line.startswith("="):
-                continue
-            if "::" in line:
-                node_id = line.split()[0]
-                node_ids.append(node_id)
-
-        # Fallback: if -o addopts= was not supported or tree format was printed
-        if not node_ids:
-            current_mod = ""
-            current_cls = ""
-            for raw_line in res.stdout.splitlines():
-                stripped = raw_line.strip()
-                if stripped.startswith("<Module "):
-                    current_mod = stripped[len("<Module "):-1].strip("'\"")
-                    current_cls = ""
-                elif stripped.startswith("<Class "):
-                    current_cls = stripped[len("<Class "):-1].strip("'\"")
-                elif stripped.startswith("<Function "):
-                    fn = stripped[len("<Function "):-1].strip("'\"")
-                    mod_path = f"tests/{current_mod}" if not current_mod.startswith("tests/") else current_mod
-                    if current_cls:
-                        node_ids.append(f"{mod_path}::{current_cls}::{fn}")
-                    else:
-                        node_ids.append(f"{mod_path}::{fn}")
-
-        if not node_ids:
-            logger.warning(
-                f"Collection returned zero tests from {self.repo_path}.\n"
-                f"Exit code: {res.returncode}\n"
-                f"This may indicate: no test files found, incompatible pytest plugins, "
-                f"or misconfigured pytest.ini"
-            )
-            # Don't raise here - return empty list and let caller decide
+            logger.warning("No tests collected from %s", self.repo_path)
             self._collected_test_ids = []
             return []
 
-        self._collected_test_ids = sorted(node_ids)
-        return self._collected_test_ids
+        raw_ids: List[str] = []
+        for line in res.stdout.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("="):
+                continue
+            if "::" in stripped:
+                # Take only the first token (node ID) — ignore trailing counts
+                raw_ids.append(stripped.split()[0])
+
+        # Fallback: pytest printed tree format (<Module>, <Class>, <Function>)
+        if not raw_ids:
+            current_mod = ""
+            current_cls = ""
+            for raw_line in res.stdout.splitlines():
+                s = raw_line.strip()
+                if s.startswith("<Module "):
+                    current_mod = s[len("<Module "):-1].strip("'\"")
+                    current_cls = ""
+                elif s.startswith("<Class "):
+                    current_cls = s[len("<Class "):-1].strip("'\"")
+                elif s.startswith("<Function "):
+                    fn = s[len("<Function "):-1].strip("'\"")
+                    if current_cls:
+                        raw_ids.append(f"{current_mod}::{current_cls}::{fn}")
+                    else:
+                        raw_ids.append(f"{current_mod}::{fn}")
+
+        if not raw_ids:
+            logger.warning(
+                "Collection returned zero tests from %s "
+                "(exit=%d). Stderr:\n%s",
+                self.repo_path, res.returncode, res.stderr,
+            )
+            self._collected_test_ids = []
+            return []
+
+        # Normalize every raw ID to be repo-root-relative
+        node_ids = sorted(
+            normalize_pytest_target(nid, self.repo_path) for nid in raw_ids
+        )
+
+        logger.info(
+            "Collected %d tests from %s (first: %s)",
+            len(node_ids), self.repo_path,
+            node_ids[0] if node_ids else "<none>",
+        )
+        self._collected_test_ids = node_ids
+        return node_ids
+
+    # ------------------------------------------------------------------
+    # Test execution
+    # ------------------------------------------------------------------
 
     def run_tests(
         self,
@@ -184,14 +322,15 @@ class TestRunner:
     ) -> TestRun:
         """
         Execute pytest with injected controlled variation and parse results.
+
+        cwd is always self.repo_path.  Node IDs passed to pytest are always
+        relative to self.repo_path (repo-root-relative, POSIX paths).
         """
-        # Verify pytest environment
         env_check = self.verify_pytest_environment()
         if not env_check["verified"]:
             raise RuntimeError(
                 f"Pytest environment not verified: {env_check['warnings']}"
             )
-        
         if not env_check["json_report"]:
             raise RuntimeError(
                 "pytest-json-report plugin is required but not installed. "
@@ -200,13 +339,13 @@ class TestRunner:
 
         run_id = str(uuid.uuid4())
 
-        # 1. RESET STATE FIRST before every single run
+        # 1. Reset per-run state directory
         state_dir_env = os.environ.get("FLAKEGUARD_STATE_DIR")
-        if state_dir_env:
-            state_dir = Path(state_dir_env).resolve()
-        else:
-            state_dir = (self.repo_path / ".flakeguard_state").resolve()
-
+        state_dir = (
+            Path(state_dir_env).resolve()
+            if state_dir_env
+            else (self.repo_path / ".flakeguard_state").resolve()
+        )
         if state_dir.exists():
             shutil.rmtree(state_dir, ignore_errors=True)
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -215,12 +354,11 @@ class TestRunner:
             if pycache.is_dir():
                 shutil.rmtree(pycache, ignore_errors=True)
 
-        # 2. ORDERING: shuffle collected node IDs with random.Random(ordering_seed)
+        # 2. Collect + optionally filter test IDs
         all_node_ids = list(self.collect_test_ids())
-        
-        # Handle no tests collected
+
         if not all_node_ids:
-            logger.warning(f"No tests collected from {self.repo_path}")
+            logger.warning("No tests collected from %s", self.repo_path)
             return TestRun(
                 run_id=run_id,
                 repository=str(self.repo_path),
@@ -237,9 +375,9 @@ class TestRunner:
                 env_chaos=env_chaos or {},
                 parallel=False,
                 duration_seconds=0.0,
-                returncode=5,  # pytest exit code for no tests collected
+                returncode=5,
             )
-        
+
         if test_pattern:
             all_node_ids = [nid for nid in all_node_ids if test_pattern in nid]
 
@@ -248,24 +386,20 @@ class TestRunner:
             rng = random.Random(ordering_seed)
             rng.shuffle(node_ids)
 
-        # 3. ENVIRONMENT: build child env and stamp FG_* vars
-        child_env = os.environ.copy()
-        project_root = Path(__file__).resolve().parent.parent.parent
-        curr_pypath = child_env.get("PYTHONPATH", "")
-        child_env["PYTHONPATH"] = f"{project_root}{os.pathsep}{curr_pypath}" if curr_pypath else str(project_root)
-        child_env["FLAKEGUARD_STATE_DIR"] = str(state_dir)
-        child_env["FG_RUN_INDEX"] = str(run_index)
-        child_env["FG_ORDERING_SEED"] = str(ordering_seed if ordering_seed is not None else 0)
-        child_env["FG_JITTER_MS"] = str(jitter_ms)
+        # 3. Build child environment
+        child_env = self._build_execution_env(
+            run_index=run_index,
+            ordering_seed=ordering_seed,
+            jitter_ms=jitter_ms,
+            state_dir=state_dir,
+            env_chaos=env_chaos,
+        )
 
-        if env_chaos:
-            child_env.update(env_chaos)
-
-        # 4. JITTER: sleep before launching pytest
+        # 4. Jitter
         if jitter_ms > 0:
             time.sleep(jitter_ms / 1000.0)
 
-        # 5. PARALLELISM: check xdist importability
+        # 5. Parallelism
         actual_parallel = parallel
         if actual_parallel:
             try:
@@ -273,26 +407,33 @@ class TestRunner:
             except ImportError:
                 actual_parallel = False
 
-        # 6. Build pytest command using sys.executable
+        # 6. Build pytest command
         report_file = self.repo_path / f".temp_results_{run_id}.json"
         cmd = [
-            sys.executable,
-            "-m",
-            "pytest",
-            "-p",
-            "backend.harness.pytest_compat",
-            "-p",
-            "no:cacheprovider",
+            sys.executable, "-m", "pytest",
+            # Anchor rootdir to the target repo — prevents FlakeGuard's
+            # pytest.ini from being discovered and poisoning node ID paths.
+            f"--rootdir={self.repo_path}",
+            "-p", "no:cacheprovider",
             "--tb=short",
             "-v",
             "--json-report",
             f"--json-report-file={report_file}",
         ]
 
+        if self._is_flakeguard_repo:
+            cmd += ["-p", "backend.harness.pytest_compat"]
+
         if actual_parallel:
             cmd.extend(["-n", "4"])
 
         cmd.extend(node_ids)
+
+        logger.info(
+            "Pytest run %d: cwd=%s, rootdir=%s, tests=%d, cmd=%s",
+            run_index, self.repo_path, self.repo_path,
+            len(node_ids), " ".join(str(c) for c in cmd[:8]) + " ...",
+        )
 
         start_time = time.perf_counter()
         res = subprocess.run(
@@ -304,17 +445,15 @@ class TestRunner:
         )
         duration_seconds = time.perf_counter() - start_time
 
-        # Log pytest execution details
         logger.info(
-            f"Pytest run {run_index} completed: exit_code={res.returncode}, "
-            f"duration={duration_seconds:.2f}s, tests={len(node_ids)}"
+            "Pytest run %d completed: exit_code=%d, duration=%.2fs",
+            run_index, res.returncode, duration_seconds,
         )
 
-        # 8. HANDLE MISSING RESULT FILE
+        # 7. Handle missing result file
         if not report_file.exists():
-            # Check if exit code 5 (no tests collected)
             if res.returncode == 5:
-                logger.warning(f"Pytest run {run_index}: no tests collected")
+                logger.warning("Pytest run %d: no tests collected (exit 5)", run_index)
                 return TestRun(
                     run_id=run_id,
                     repository=str(self.repo_path),
@@ -331,45 +470,46 @@ class TestRunner:
                     env_chaos=env_chaos or {},
                     parallel=actual_parallel,
                     duration_seconds=round(duration_seconds, 4),
-                    returncode=res.returncode,
+                    returncode=5,
                 )
-            
-            # Otherwise it's an infrastructure failure
+
             error_msg = (
-                f"Pytest run {run_index} (id: {run_id}) failed to produce results file {report_file}.\n"
+                f"Pytest run {run_index} (id: {run_id}) failed to produce "
+                f"results file {report_file}.\n"
                 f"Return code: {res.returncode}\n"
-                f"Command: {' '.join(cmd)}\n"
+                f"Command: {' '.join(str(c) for c in cmd)}\n"
                 f"Working directory: {self.repo_path}\n"
                 f"Python executable: {sys.executable}\n"
             )
             if res.stderr:
                 error_msg += f"Stderr:\n{res.stderr}\n"
             if res.stdout:
-                error_msg += f"Stdout (last 500 chars):\n{res.stdout[-500:]}\n"
-            
+                error_msg += f"Stdout (last 1000 chars):\n{res.stdout[-1000:]}\n"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
 
-        with open(report_file, "r", encoding="utf-8") as f:
+        # 8. Parse result file
+        with open(report_file, "r", encoding="utf-8") as fh:
             try:
-                data = json.load(f)
-            except Exception as e:
+                data = json.load(fh)
+            except Exception as exc:
                 raise RuntimeError(
-                    f"Failed to parse json report {report_file}: {e}\n"
+                    f"Failed to parse JSON report {report_file}: {exc}\n"
                     f"Return code: {res.returncode}\n"
                     f"Stderr:\n{res.stderr}"
-                ) from e
-        # Cleanup after file handle is closed (important on Windows)
+                ) from exc
+        # Unlink after close (Windows cannot delete open files)
         try:
             report_file.unlink()
         except Exception:
             pass
 
-        # 7. Stamp run_id and attempt_index onto every TestExecution
+        # 9. Parse individual test results
         executions = self._parse_pytest_results(data, run_id)
         if not executions and node_ids:
             raise RuntimeError(
-                f"Pytest run {run_index} (id: {run_id}) produced zero test executions despite {len(node_ids)} tests run.\n"
+                f"Pytest run {run_index} (id: {run_id}) produced zero test "
+                f"executions despite {len(node_ids)} tests queued.\n"
                 f"Return code: {res.returncode}\n"
                 f"Stderr:\n{res.stderr}\n"
                 f"Stdout:\n{res.stdout}"
@@ -396,6 +536,10 @@ class TestRunner:
             duration_seconds=round(duration_seconds, 4),
             returncode=res.returncode,
         )
+
+    # ------------------------------------------------------------------
+    # Result parsing
+    # ------------------------------------------------------------------
 
     def _parse_pytest_results(self, data: dict, run_id: str) -> List[TestExecution]:
         """Parse pytest JSON report into TestExecution objects."""
@@ -441,8 +585,11 @@ class TestRunner:
 
         return executions
 
+    # ------------------------------------------------------------------
+    # Git helpers
+    # ------------------------------------------------------------------
+
     def _get_current_branch(self) -> str:
-        """Get current git branch."""
         try:
             res = subprocess.run(
                 ["git", "branch", "--show-current"],
@@ -455,7 +602,6 @@ class TestRunner:
             return "main"
 
     def _get_current_commit(self) -> str:
-        """Get current git commit SHA."""
         try:
             res = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
