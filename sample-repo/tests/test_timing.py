@@ -1,41 +1,38 @@
 """Tests with timing-related flakiness patterns."""
+import os
+import random
+import threading
 import time
-import pytest
-from src.calculator import Calculator
 
 
 class TestTimingIssues:
-    """Tests that exhibit timing-related flakiness."""
-    
-    def test_timing_dependent(self):
-        """Test that depends on timing - can be flaky."""
-        calc = Calculator()
-        start = time.time()
-        
-        # This test can fail if system is slow
-        result = calc.add(5, 3)
-        elapsed = time.time() - start
-        
-        # Flaky: depends on system load
-        assert elapsed < 0.001, f"Operation took too long: {elapsed}s"
-        assert result == 8
-    
-    def test_sleep_based(self):
-        """Test using sleep - unreliable."""
-        calc = Calculator()
-        
-        # Flaky: sleep doesn't guarantee exact timing
-        time.sleep(0.01)
-        result = calc.add(2, 2)
-        
-        assert result == 4
-    
-    def test_timeout_sensitive(self):
-        """Test that might timeout on slow systems."""
-        calc = Calculator()
-        
-        # This might timeout on CI with heavy load
-        for _ in range(10000):
-            calc.add(1, 1)
-        
-        assert calc.operation_count == 10000
+    """Tests exhibiting timing and race condition flakiness."""
+
+    def test_worker_thread_race(self):
+        """Worker thread race condition where wait timeout can expire before thread finishes."""
+        results = []
+        done = threading.Event()
+
+        def worker():
+            time.sleep(random.uniform(0.0, 0.06))
+            results.append("ok")
+            done.set()
+
+        t = threading.Thread(target=worker)
+        t.start()
+
+        done.wait(timeout=0.03)
+        # CRITICAL: Take snapshot before join
+        snapshot = list(results)
+        t.join()
+
+        jitter_val = os.environ.get("FG_JITTER_MS")
+        assert snapshot == ["ok"], (
+            f"Suspected cause: timing race condition in worker thread. "
+            f"Observed snapshot: {snapshot}, FG_JITTER_MS: {jitter_val}"
+        )
+
+    def test_wait_is_deterministic_control(self):
+        """Stable control test with pure in-process computation."""
+        values = [i * 2 for i in range(10)]
+        assert sum(values) == 90

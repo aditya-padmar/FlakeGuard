@@ -1,0 +1,70 @@
+{
+  "session_id": "c3ffe098-a2b5-410e-a71c-e3c37f7554fa",
+  "timestamp": "2026-09-25T20:24:43.359453+00:00",
+  "test_name": "TestOrderingIssues::test_second",
+  "file_path": "sample-repo/tests/test_order.py",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "high",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 1.0,
+    "state_leakage": 0.75,
+    "environment": 0.0
+  },
+  "reasoning": "Order dependency detected (100%): Line 1: Found order_naming pattern: 'def test_second(self):'; Line 2: Found order_naming pattern: '\"\"\"Test that depends on test_first running before it.\"\"\"'; Line 3: Found shared_state pattern: 'calc = get_shared_calculator()'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found order_naming pattern: 'def test_second(self):'",
+      "source": "source_code",
+      "snippet": "def test_second(self):",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 2: Found order_naming pattern: '\"\"\"Test that depends on test_first running before it.\"\"\"'",
+      "source": "source_code",
+      "snippet": "\"\"\"Test that depends on test_first running before it.\"\"\"",
+      "line_number": 2
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 3: Found shared_state pattern: 'calc = get_shared_calculator()'",
+      "source": "source_code",
+      "snippet": "calc = get_shared_calculator()",
+      "line_number": 3
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 5: Found order_naming pattern: '# Flaky: assumes test_first already ran'",
+      "source": "source_code",
+      "snippet": "# Flaky: assumes test_first already ran",
+      "line_number": 5
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 6: Found order_assertion pattern: 'assert calc.operation_count == 1'",
+      "source": "source_code",
+      "snippet": "assert calc.operation_count == 1",
+      "line_number": 6
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 8: Found order_assertion pattern: 'assert calc.operation_count == 2'",
+      "source": "source_code",
+      "snippet": "assert calc.operation_count == 2",
+      "line_number": 8
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name explicitly suggests sequential dependency: 'second'",
+      "source": "test_name",
+      "snippet": "TestOrderingIssues::test_second",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_second(self):\n        \"\"\"Test that depends on test_first running before it.\"\"\"\n        calc = get_shared_calculator()\n        \n        # Flaky: assumes test_first already ran\n        assert calc.operation_count == 1\n        calc.add(5, 5)\n        assert calc.operation_count == 2"
+}

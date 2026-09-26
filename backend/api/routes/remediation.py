@@ -1,6 +1,6 @@
 """Remediation API routes."""
 from fastapi import APIRouter, HTTPException
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 import uuid
 
@@ -8,6 +8,8 @@ from backend.models.remediation import Fix, FixSuggestion, FixStatus
 from backend.models.classification import Classification, RootCauseType, Evidence, Confidence
 from backend.remediation.generator import FixGenerator
 from backend.remediation.validator import FixValidator, ValidationResult
+from backend.remediation.evidence_validator import EvidenceValidator
+from backend.remediation.strategy import StrategySelector
 from backend.bob.agent import BobAgent
 
 router = APIRouter()
@@ -323,3 +325,63 @@ def _store_patched_sources(fix: Fix) -> None:
         # If DiffGenerator stored new_content use it; otherwise keep the diff text
         patched = suggestion.diff.new_content or suggestion.diff.unified_diff
         _patched_sources[f"{fix.fix_id}:{suggestion.suggestion_id}"] = patched
+
+
+# ── F3 Evidence & Strategy Endpoints ─────────────────────────────────────────
+
+class EvidenceValidationRequest(BaseModel):
+    """F2 diagnosis object submitted for evidence validation."""
+    test_name: str
+    root_cause: str
+    confidence: float = Field(0.5, ge=0.0, le=1.0)
+    evidence: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "List of evidence dicts: {file: str, line: int, reason: str}. "
+            "These are the structured evidence items produced by F2."
+        ),
+    )
+
+
+class StrategyRequest(BaseModel):
+    """Request to select a remediation strategy."""
+    root_cause: str
+    evidence: Optional[List[Dict[str, Any]]] = None
+
+
+@router.post("/validate-evidence")
+async def validate_evidence(request: EvidenceValidationRequest):
+    """
+    **F3** — Validate F2 diagnosis evidence.
+
+    Checks that every evidence item points to a real file and valid line number
+    so that the fix generator can proceed with confidence.
+
+    Returns a validation result with:
+    - ``valid``: whether all evidence is usable
+    - ``locations``: resolved file:line strings
+    - ``details``: per-item validation breakdown
+    """
+    validator = EvidenceValidator()
+    result = validator.validate(request.model_dump())
+    return result
+
+
+@router.post("/select-strategy")
+async def select_strategy(request: StrategyRequest):
+    """
+    **F3** — Select remediation strategies for a root cause.
+
+    Maps the F2 root cause to ordered remediation strategies.
+    Optionally refines the selection using the provided evidence.
+
+    Returns:
+    - ``strategies``: ordered strategy names
+    - ``descriptions``: human-readable descriptions of each strategy
+    """
+    strategies = StrategySelector.select_strategies(request.root_cause, request.evidence)
+    return {
+        "root_cause": request.root_cause,
+        "strategies": [s.value for s in strategies],
+        "descriptions": [StrategySelector.get_strategy_description(s) for s in strategies],
+    }
