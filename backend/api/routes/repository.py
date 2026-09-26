@@ -1,5 +1,6 @@
 """Repository and upload integration API routes for FlakeGuard."""
 import logging
+import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
@@ -11,6 +12,15 @@ from backend.harness.pipeline_service import PipelineService
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+_LOCAL_PATH_RE = re.compile(r'[A-Za-z]:\\[^\s]+|(?:/[^\s]*){3,}')
+
+
+def _safe_error(exc: Exception) -> str:
+    """Return a user-facing error string with local filesystem paths stripped."""
+    msg = str(exc)
+    # Replace absolute Windows paths (C:\...) and long Unix paths with a placeholder
+    return _LOCAL_PATH_RE.sub('<server path>', msg)
 
 # In-memory cache of recent pipeline runs
 _latest_analysis: Optional[Dict[str, Any]] = None
@@ -85,7 +95,7 @@ async def clone_and_analyze(request: CloneRequest):
 
     except Exception as e:
         logger.exception("GitHub clone and analysis failed: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @router.post("/upload")
@@ -127,7 +137,7 @@ async def upload_and_analyze(
 
     except Exception as e:
         logger.exception("Upload analysis failed: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @router.post("/analyze-local")
@@ -158,7 +168,7 @@ async def analyze_local(request: LocalAnalyzeRequest):
 
     except Exception as e:
         logger.exception("Local repository analysis failed: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @router.post("/create-pr")

@@ -252,9 +252,9 @@ class TestRunner:
             text=True,
         )
 
-        # exit code 5 = no tests collected
+        # exit code 5 = no tests collected (no test files matched discovery rules)
         if res.returncode == 5:
-            logger.warning("No tests collected from %s", self.repo_path)
+            logger.warning("No tests collected from %s (exit 5)", self.repo_path)
             self._collected_test_ids = []
             return []
 
@@ -286,13 +286,26 @@ class TestRunner:
                         raw_ids.append(f"{current_mod}::{fn}")
 
         if not raw_ids:
+            # Build a clean hint from stderr (strip local paths before raising)
+            import re as _re
+            _path_re = _re.compile(r'[A-Za-z]:\\[^\s]+|(?:/[^\s]*){3,}')
+            stderr_clean = _path_re.sub('<path>', res.stderr.strip()) if res.stderr else ""
+            hint = ""
+            if stderr_clean:
+                # Grab only the first meaningful line to keep the message short
+                first_line = next(
+                    (ln.strip() for ln in stderr_clean.splitlines() if ln.strip() and not ln.strip().startswith("=")),
+                    ""
+                )
+                if first_line:
+                    hint = f" Hint: {first_line}"
             logger.warning(
-                "Collection returned zero tests from %s "
-                "(exit=%d). Stderr:\n%s",
-                self.repo_path, res.returncode, res.stderr,
+                "Collection returned zero tests (exit=%d). Stderr: %s",
+                res.returncode, res.stderr,
             )
-            self._collected_test_ids = []
-            return []
+            raise RuntimeError(
+                f"No tests were collected (exit code: {res.returncode}).{hint}"
+            )
 
         # Normalize every raw ID to be repo-root-relative
         node_ids = sorted(

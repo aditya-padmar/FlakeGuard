@@ -60,11 +60,33 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     timer.current = setInterval(() => setProcess(previous => previous ? { ...previous, elapsed: Math.floor((Date.now() - started) / 1000) } : null), 1000);
     try {
       const response = await repositoryApi.cloneAndAnalyze({ repo_url: normalized, branch: branch.trim() || 'main', num_runs: 10 }, requestController.signal);
-      if (generation.current === currentGeneration) setData(adaptAnalysis(response.data));
+      if (generation.current !== currentGeneration) return;
+      const result = response.data;
+      if (result.status === 'no_tests') {
+        const backendMsg = result.errors?.[0]?.message || result.message || '';
+        const baseMsg = 'No pytest-compatible tests were found in this repository.';
+        // Append backend hint (e.g. import error) if it adds information beyond the base
+        const extra = backendMsg && !backendMsg.toLowerCase().startsWith('no pytest') ? ` ${backendMsg}` : '';
+        setError(`${baseMsg}${extra} FlakeGuard requires a Python project with test files named test_*.py or *_test.py.`);
+        return;
+      }
+      if (result.status === 'error') {
+        const reason = result.errors?.[0]?.message || result.message || 'Analysis failed.';
+        // Strip any local server paths from the message before showing to the user
+        const safe = reason.replace(/[A-Za-z]:\\[^\s.]+/g, '<server path>').replace(/\/[^\s]*\/data\/repos\/[^\s]*/g, '<server path>');
+        setError(`Analysis failed: ${safe}`);
+        return;
+      }
+      setData(adaptAnalysis(result));
     } catch (cause) {
       if (generation.current !== currentGeneration || axios.isCancel(cause)) return;
       const detail = axios.isAxiosError(cause) ? cause.response?.data?.detail : null;
-      setError(typeof detail === 'string' ? detail : 'The analysis service could not complete this request. Check that the backend is running on port 8000 and that the repository is accessible. Your previous results have been kept.');
+      const rawMessage = typeof detail === 'string' ? detail : null;
+      // Sanitize any local server paths that may appear in error details
+      const safeMessage = rawMessage
+        ? rawMessage.replace(/[A-Za-z]:\\[^\s.]+/g, '<server path>').replace(/\/[^\s]*\/data\/repos\/[^\s]*/g, '<server path>')
+        : null;
+      setError(safeMessage || 'The analysis service could not complete this request. Check that the backend is running on port 8000 and that the repository is accessible. Your previous results have been kept.');
     } finally {
       if (generation.current === currentGeneration) { clearTimer(); setProcess(null); }
     }
