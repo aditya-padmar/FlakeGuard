@@ -206,7 +206,7 @@ async def create_pull_request(request: CreatePRRequest):
         return pr_result
     except Exception as e:
         logger.exception("GitHub PR creation failed: %s", e)
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @router.get("/latest")
