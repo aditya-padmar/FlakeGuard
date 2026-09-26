@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
+import { MotionConfig } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowUpRight, Braces, ChevronRight, CircleHelp, Command, FlaskConical, GitBranch, LayoutDashboard, LogOut, Menu, Plus, ShieldOff, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider, useWorkspace } from './redesign/WorkspaceContext';
@@ -10,12 +10,13 @@ import SourcesPage from './redesign/SourcesPage';
 import './redesign/experience.css';
 import './redesign/dashboard.css';
 
-const Launchpad = lazy(() => import('./redesign/Launchpad'));
-const DashboardView = lazy(() => import('./redesign/DashboardView'));
+import Launchpad from './redesign/Launchpad';
+import DashboardView from './redesign/DashboardView';
 const PipelineView = lazy(() => import('./redesign/PipelineView'));
 const RemediationTools = lazy(() => import('./pages/RemediationPage'));
 const AuditTools = lazy(() => import('./pages/AuditPage'));
 const RepositoryIngestion = lazy(() => import('./components/RepositoryIngestion'));
+const WorkspaceGuidePage = lazy(() => import('./redesign/WorkspaceGuidePage'));
 
 function Brand() {
   return (
@@ -34,7 +35,6 @@ function Shell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const navigationTrigger = useRef<HTMLButtonElement>(null);
@@ -79,7 +79,7 @@ function Shell() {
   const runDemo = useCallback(() => { startDemo(); navigate('/pipeline'); }, [startDemo, navigate]);
   const runLive = useCallback(async (url: string, branch: string) => { const request = startLive(url, branch); navigate('/pipeline'); await request; }, [startLive, navigate]);
   const rerun = useCallback(() => { if (data.mode === 'demo') runDemo(); else navigate('/'); }, [data.mode, runDemo, navigate]);
-  const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname === '/sources' ? 'Repository sources' : location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
+  const pageName = navItems.find(item => item.to === location.pathname)?.label ?? (location.pathname === '/sources' ? 'Repository sources' : location.pathname === '/guide' ? 'Workspace guide' : location.pathname.startsWith('/tools') ? 'Developer tools' : 'Workspace');
 
   if (location.pathname === '/login' || location.pathname === '/signup') return <Navigate to="/" replace />;
 
@@ -95,7 +95,7 @@ function Shell() {
         <div className="fg-sidebar-divider" /><span className="fg-nav-label">Developer tools</span>
         <nav aria-label="Developer tools"><NavLink className="fg-nav-item" to="/sources"><GitBranch size={18} />Repository sources</NavLink></nav>
         <div className="fg-sidebar-bottom">
-          <button className="fg-nav-item" onClick={() => setHelpOpen(value => !value)} aria-expanded={helpOpen}><CircleHelp size={17} />Workspace guide</button>
+          <NavLink to="/guide" className={({ isActive }) => `fg-nav-item ${isActive ? 'is-active' : ''}`}><CircleHelp size={17} /><span>Workspace guide</span></NavLink>
           <div className="fg-account"><span className="fg-account-avatar">{user?.avatar ?? 'D'}</span><div><strong>{user?.name ?? 'Demo workspace'}</strong><span>{user ? 'Local demo profile' : 'Developer workspace'}</span></div>{user && <button className="fg-icon-button" aria-label="Sign out" onClick={() => { logout(); navigate('/'); }}><LogOut size={16} /></button>}</div>
         </div>
       </aside>
@@ -114,25 +114,23 @@ function Shell() {
         </div>
       </header>
       <main id="main-content" className={isLanding ? 'fg-public-main' : 'fg-workspace-main'}>
-        {helpOpen && !isLanding && <section className="fg-help-panel fg-panel"><div><strong>From flaky to trustworthy.</strong><p>Start an analysis, inspect the evidence, then review a suggested patch. Sample runs and validations are simulations; real repository analysis requires the backend. No fixes are auto-merged.</p></div><button className="fg-icon-button" aria-label="Close workspace guide" onClick={() => setHelpOpen(false)}><X size={16} /></button></section>}
-        <AnimatePresence mode="wait"><motion.div key={isLanding ? 'landing' : 'workspace'} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: .22 }}>
-          <Suspense fallback={<div className="fg-loading" role="status"><Activity size={22} />Loading workspace…</div>}><Routes>
-            <Route path="/" element={<Launchpad onRun={runLive} onDemo={runDemo} error={error} busy={!!process} />} />
-            <Route path="/dashboard" element={<DashboardView data={data} view="overview" onRerun={rerun} onValidate={validateDemo} />} />
-            <Route path="/inventory" element={<DashboardView data={data} view="inventory" onRerun={rerun} onValidate={validateDemo} />} />
-            <Route path="/quarantine" element={<DashboardView data={data} view="quarantine" onRerun={rerun} onValidate={validateDemo} />} />
-            <Route path="/audit" element={<Navigate to="/quarantine" replace />} />
-            <Route path="/fixes" element={<DashboardView data={data} view="fixes" onRerun={rerun} onValidate={validateDemo} />} />
-            <Route path="/remediation" element={<Navigate to="/fixes" replace />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/signup" element={<Navigate to="/" replace />} />
-            <Route path="/pipeline" element={process ? <PipelineView {...process} onCancel={() => { cancel(); navigate('/'); }} /> : <section className="fg-not-found"><span className="fg-eyebrow">PIPELINE / STANDING BY</span><h1>Ready for the next investigation.</h1><p className="fg-source-intro">No analysis is running. Your current results are unchanged.</p><Link to="/" className="fg-button fg-button-primary">Analyze a repository <ArrowUpRight size={15} /></Link><button className="fg-button" style={{ marginLeft: 12 }} onClick={runDemo}>Start sample demo</button></section>} />
-            <Route path="/tools/remediation" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><RemediationTools /></div>} />
-            <Route path="/tools/audit" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><AuditTools /></div>} />
-            <Route path="/sources" element={<SourcesPage><RepositorySources /></SourcesPage>} />
-            <Route path="*" element={<div className="fg-not-found"><span className="fg-eyebrow">404 / SIGNAL LOST</span><h1>This page isn’t in the pipeline.</h1><Link className="fg-button fg-button-primary" to="/"><ArrowLeft size={16} />Back to launchpad</Link></div>} />
-          </Routes></Suspense>
-        </motion.div></AnimatePresence>
+        <Suspense fallback={<div className="fg-loading" role="status"><Activity size={22} />Loading workspace…</div>}><Routes>
+          <Route path="/" element={<Launchpad onRun={runLive} onDemo={runDemo} error={error} busy={!!process} />} />
+          <Route path="/dashboard" element={<DashboardView data={data} view="overview" onRerun={rerun} onValidate={validateDemo} />} />
+          <Route path="/inventory" element={<DashboardView data={data} view="inventory" onRerun={rerun} onValidate={validateDemo} />} />
+          <Route path="/quarantine" element={<DashboardView data={data} view="quarantine" onRerun={rerun} onValidate={validateDemo} />} />
+          <Route path="/audit" element={<Navigate to="/quarantine" replace />} />
+          <Route path="/fixes" element={<DashboardView data={data} view="fixes" onRerun={rerun} onValidate={validateDemo} />} />
+          <Route path="/remediation" element={<Navigate to="/fixes" replace />} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
+          <Route path="/pipeline" element={process ? <PipelineView {...process} onCancel={() => { cancel(); navigate('/'); }} /> : <section className="fg-not-found"><span className="fg-eyebrow">PIPELINE / STANDING BY</span><h1>Ready for the next investigation.</h1><p className="fg-source-intro">No analysis is running. Your current results are unchanged.</p><Link to="/" className="fg-button fg-button-primary">Analyze a repository <ArrowUpRight size={15} /></Link><button className="fg-button" style={{ marginLeft: 12 }} onClick={runDemo}>Start sample demo</button></section>} />
+          <Route path="/tools/remediation" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><RemediationTools /></div>} />
+          <Route path="/tools/audit" element={<div className="fg-legacy-tools"><div className="fg-eyebrow">ADVANCED · LIVE BACKEND</div><AuditTools /></div>} />
+          <Route path="/sources" element={<SourcesPage><RepositorySources /></SourcesPage>} />
+          <Route path="/guide" element={<WorkspaceGuidePage onDemo={runDemo} />} />
+          <Route path="*" element={<div className="fg-not-found"><span className="fg-eyebrow">404 / SIGNAL LOST</span><h1>This page isn’t in the pipeline.</h1><Link className="fg-button fg-button-primary" to="/"><ArrowLeft size={16} />Back to launchpad</Link></div>} />
+        </Routes></Suspense>
       </main>
       {!isLanding && <footer className="fg-workspace-footer"><span><img src="/flakeguard-mark.png" alt="FlakeGuard" style={{ width: 14, height: 14, objectFit: 'contain', verticalAlign: 'middle', marginRight: 6 }} />Evidence first. Human reviewed. Never auto-merged.</span><span><Command size={12} />FlakeGuard <span className="fg-footer-dot">·</span> Built with IBM Bob</span></footer>}
     </div>

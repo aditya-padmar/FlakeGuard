@@ -68,38 +68,76 @@ class GitService:
         else:
             auth_url = f"https://github.com/{owner}/{repo}.git"
 
-        cmd = ["git", "clone", f"--depth={depth}"]
+        # Explicitly disable credential helpers and terminal prompts so host OS credentials
+        # (e.g. Windows Git Credential Manager) are not silently used for private repos.
+        base_cmd = [
+            "git",
+            "-c", "credential.helper=",
+            "-c", "core.askPass=",
+            "clone",
+            f"--depth={depth}"
+        ]
+
+        cmd = list(base_cmd)
         if branch and branch.strip():
             cmd.extend(["--branch", branch.strip()])
         cmd.extend([auth_url, str(destination)])
+
+        git_env = os.environ.copy()
+        git_env["GIT_TERMINAL_PROMPT"] = "0"
+        git_env["GIT_ASKPASS"] = "echo"
 
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=120
+                timeout=120,
+                env=git_env
             )
 
             # Smart branch fallback: If branch was specified (e.g. 'main') but does not exist on remote
             # (e.g. repo uses 'master'), retry without --branch to clone the remote's default HEAD branch
             if result.returncode != 0 and branch and ("Remote branch" in result.stderr or "not found" in result.stderr.lower()):
-                logger.warning(
-                    "Branch '%s' not found for %s/%s. Retrying clone with upstream default branch...",
-                    branch, owner, repo
+                # Only retry branch fallback if the error is not an authentication/private repo issue
+                stderr_lower = result.stderr.lower()
+                is_auth_issue = any(
+                    err_hint in stderr_lower
+                    for err_hint in ("could not read username", "authentication failed", "terminal prompts disabled", "repository not found", "fatal: repository")
                 )
-                if destination.exists():
-                    shutil.rmtree(destination, ignore_errors=True)
-                fallback_cmd = ["git", "clone", f"--depth={depth}", auth_url, str(destination)]
-                result = subprocess.run(
-                    fallback_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
+                if not is_auth_issue:
+                    logger.warning(
+                        "Branch '%s' not found for %s/%s. Retrying clone with upstream default branch...",
+                        branch, owner, repo
+                    )
+                    if destination.exists():
+                        shutil.rmtree(destination, ignore_errors=True)
+                    fallback_cmd = list(base_cmd) + [auth_url, str(destination)]
+                    result = subprocess.run(
+                        fallback_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                        env=git_env
+                    )
 
             if result.returncode != 0:
                 sanitized_stderr = result.stderr.replace(token or "", "[REDACTED]") if token else result.stderr
+                stderr_lower = sanitized_stderr.lower()
+                if (
+                    "could not read username" in stderr_lower
+                    or "authentication failed" in stderr_lower
+                    or "terminal prompts disabled" in stderr_lower
+                    or "repository not found" in stderr_lower
+                ):
+                    if not token or not token.strip():
+                        raise RuntimeError(
+                            f"Repository '{owner}/{repo}' is private or does not exist. Please provide a GitHub Personal Access Token."
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Authentication failed for '{owner}/{repo}'. Please check your Personal Access Token permissions."
+                        )
                 raise RuntimeError(f"Git clone failed: {sanitized_stderr.strip()}")
 
             # Extract current commit and branch

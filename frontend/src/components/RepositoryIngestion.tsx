@@ -33,10 +33,10 @@ export default function RepositoryIngestion({
   onAnalysisComplete,
   activeSourceInfo
 }: RepositoryIngestionProps) {
-  const [activeTab, setActiveTab] = useState<'github' | 'upload' | 'local'>('github');
+  const [activeTab, setActiveTab] = useState<'github' | 'upload'>('github');
   
   // GitHub state
-  const [repoUrl, setRepoUrl] = useState('https://github.com/aditya-padmar/FlakeGuard');
+  const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
@@ -44,10 +44,6 @@ export default function RepositoryIngestion({
   // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
-
-  // Local state
-  const [localPath, setLocalPath] = useState('sample-repo');
-  const [availableSources, setAvailableSources] = useState<Array<{ id: string; name: string; path: string; description: string }>>([]);
 
   // Shared execution settings
   const [numRuns, setNumRuns] = useState(5);
@@ -72,18 +68,9 @@ export default function RepositoryIngestion({
   // The per-setup signal also rejects responses from StrictMode's discarded mount.
   useEffect(() => {
     mounted.current = true;
-    const sourceController = new AbortController();
-    repositoryApi.getSources(sourceController.signal)
-      .then(res => {
-        if (!sourceController.signal.aborted && res.data?.sources) {
-          setAvailableSources(res.data.sources);
-        }
-      })
-      .catch(() => {});
     return () => {
       mounted.current = false;
       generation.current += 1;
-      sourceController.abort();
       const request = activeRequest.current;
       if (request) { request.controller.abort(); clearRequestTimers(request); }
       activeRequest.current = null;
@@ -254,55 +241,6 @@ export default function RepositoryIngestion({
     }
   };
 
-  const handleLocalAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const request = beginRequest();
-    if (!request) return;
-    setLoading(true);
-    setErrorMessage(null);
-    setSuccessInfo(null);
-    setCurrentStep(2);
-    setStatusMessage(`Executing ${numRuns} test iterations on local suite: ${localPath}...`);
-
-    try {
-      const response = await repositoryApi.analyzeLocal({
-        repo_path: localPath,
-        num_runs: numRuns,
-        test_pattern: testPattern.trim() || undefined
-      }, request.controller.signal);
-      if (!isCurrentRequest(request)) return;
-
-      const data = response.data;
-      const flakyCount = data.detection?.flaky_tests_count ?? 0;
-      const fixesCount = data.fixes?.length ?? 0;
-      if (data.status === 'no_tests' || data.status === 'unsupported') {
-        const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
-        setCurrentStep(0);
-        setSuccessInfo(null);
-        setErrorMessage(`No Tests Found: ${reason}`);
-        return;
-      }
-      if (data.status === 'error') {
-        const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
-        setCurrentStep(0);
-        setSuccessInfo(null);
-        setErrorMessage(`Local Analysis Failed: ${reason}`);
-        return;
-      }
-      setCurrentStep(5);
-      setStatusMessage('Local analysis complete!');
-      setSuccessInfo({ source: localPath, flakyCount, fixesCount, time: new Date().toLocaleTimeString() });
-      onAnalysisComplete(data);
-    } catch (cause: unknown) {
-      if (!isCurrentRequest(request) || axios.isCancel(cause)) return;
-      setCurrentStep(0);
-      setSuccessInfo(null);
-      setErrorMessage(`Local Analysis Failed: ${analysisError(cause, 'Local analysis failed')}`);
-    } finally {
-      finishRequest(request);
-    }
-  };
-
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -326,7 +264,7 @@ export default function RepositoryIngestion({
           <div className="badge-live-tag">F1 ➔ F2 ➔ F3 ➔ F4 Live Pipeline</div>
           <h2>Repository Ingestion & Flaky Analysis Engine</h2>
           <p className="subtitle">
-            Clone remote GitHub repositories, upload custom test archives, or run the built-in local suite.
+            Clone remote GitHub repositories or upload custom test suites and archives for automated analysis.
           </p>
         </div>
 
@@ -360,16 +298,6 @@ export default function RepositoryIngestion({
           <span className="tab-text">Upload Test Suite</span>
           <span className="tab-badge">Polyglot / Archive</span>
         </button>
-
-        <button
-          type="button"
-          className={`source-tab ${activeTab === 'local' ? 'active' : ''}`}
-          onClick={() => setActiveTab('local')}
-        >
-          <span className="tab-icon">💻</span>
-          <span className="tab-text">Local / Sample Repo</span>
-          <span className="tab-badge">Instant</span>
-        </button>
       </div>
 
       {/* Form Content */}
@@ -385,21 +313,11 @@ export default function RepositoryIngestion({
                     id="repo-url"
                     type="text"
                     value={repoUrl.replace(/^https?:\/\/github\.com\//, '')}
-                    onChange={(e) => setRepoUrl(`https://github.com/${e.target.value.replace(/^https?:\/\/github\.com\//, '')}`)}
-                    placeholder="owner/repository"
+                    onChange={(e) => setRepoUrl(e.target.value.trim() ? `https://github.com/${e.target.value.replace(/^https?:\/\/github\.com\//, '')}` : '')}
+                    placeholder="owner/repository (e.g. your-org/your-repo)"
                     required
                     disabled={loading}
                   />
-                </div>
-                <div className="quick-presets">
-                  <span className="preset-label">Quick test repos:</span>
-                  <button
-                    type="button"
-                    className="preset-chip"
-                    onClick={() => { setRepoUrl('https://github.com/aditya-padmar/FlakeGuard'); setBranch('main'); }}
-                  >
-                    aditya-padmar/FlakeGuard
-                  </button>
                 </div>
               </div>
 
@@ -557,69 +475,6 @@ export default function RepositoryIngestion({
                 ) : (
                   <>
                     <span>🚀 Upload & Run Full Analysis</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {activeTab === 'local' && (
-          <form onSubmit={handleLocalAnalyze} className="ingestion-form">
-            <div className="form-row">
-              <div className="form-group flex-2">
-                <label htmlFor="local-path-select">Pre-configured Local Repositories</label>
-                <div className="preset-grid">
-                  {availableSources.map((src) => (
-                    <div
-                      key={src.id}
-                      className={`preset-card ${localPath === src.path ? 'selected' : ''}`}
-                      onClick={() => setLocalPath(src.path)}
-                    >
-                      <div className="card-header">
-                        <strong>{src.name}</strong>
-                      </div>
-                      <p className="card-desc">{src.description}</p>
-                      <code className="card-path">{src.path}</code>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group flex-1">
-                <label htmlFor="custom-local-path">Or Custom Directory Path</label>
-                <input
-                  id="custom-local-path"
-                  type="text"
-                  value={localPath}
-                  onChange={(e) => setLocalPath(e.target.value)}
-                  placeholder="sample-repo"
-                  disabled={loading}
-                />
-                <div style={{ marginTop: '1rem' }}>
-                  <label>Execution Passes: <strong>{numRuns} runs</strong></label>
-                  <input
-                    type="range"
-                    min="2"
-                    max="10"
-                    value={numRuns}
-                    onChange={(e) => setNumRuns(Number(e.target.value))}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="action-row">
-              <button type="submit" className="btn-run-pipeline" disabled={loading}>
-                {loading ? (
-                  <>
-                    <span className="spinner"></span>
-                    <span>Analyzing Local Suite...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚡ Run Analysis on {localPath}</span>
                   </>
                 )}
               </button>
