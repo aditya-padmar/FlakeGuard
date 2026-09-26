@@ -252,11 +252,13 @@ class TestRunner:
             text=True,
         )
 
-        # exit code 5 = no tests collected (no test files matched discovery rules)
+        # exit code 5 = no tests collected (no test files matched pytest discovery rules)
         if res.returncode == 5:
             logger.warning("No tests collected from %s (exit 5)", self.repo_path)
-            self._collected_test_ids = []
-            return []
+            raise RuntimeError(
+                "No tests were collected (exit code: 5). "
+                "The repository contains no files matching test_*.py or *_test.py."
+            )
 
         raw_ids: List[str] = []
         for line in res.stdout.splitlines():
@@ -368,28 +370,9 @@ class TestRunner:
                 shutil.rmtree(pycache, ignore_errors=True)
 
         # 2. Collect + optionally filter test IDs
+        # collect_test_ids() raises RuntimeError if zero tests are found,
+        # so all_node_ids is always non-empty here.
         all_node_ids = list(self.collect_test_ids())
-
-        if not all_node_ids:
-            logger.warning("No tests collected from %s", self.repo_path)
-            return TestRun(
-                run_id=run_id,
-                repository=str(self.repo_path),
-                branch=self._get_current_branch(),
-                commit_sha=self._get_current_commit(),
-                executions=[],
-                total_tests=0,
-                passed=0,
-                failed=0,
-                timestamp=datetime.now(timezone.utc),
-                ordering_seed=ordering_seed,
-                ordering=[],
-                jitter_ms=jitter_ms,
-                env_chaos=env_chaos or {},
-                parallel=False,
-                duration_seconds=0.0,
-                returncode=5,
-            )
 
         if test_pattern:
             all_node_ids = [nid for nid in all_node_ids if test_pattern in nid]

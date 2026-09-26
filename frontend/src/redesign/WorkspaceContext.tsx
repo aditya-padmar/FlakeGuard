@@ -64,10 +64,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const result = response.data;
       if (result.status === 'no_tests') {
         const backendMsg = result.errors?.[0]?.message || result.message || '';
-        const baseMsg = 'No pytest-compatible tests were found in this repository.';
-        // Append backend hint (e.g. import error) if it adds information beyond the base
-        const extra = backendMsg && !backendMsg.toLowerCase().startsWith('no pytest') ? ` ${backendMsg}` : '';
-        setError(`${baseMsg}${extra} FlakeGuard requires a Python project with test files named test_*.py or *_test.py.`);
+        // Backend message already contains the base description; only append if
+        // it includes an extra hint (e.g. ImportError detail from pytest stderr)
+        const hasHint = backendMsg.toLowerCase().includes('hint:') || backendMsg.toLowerCase().includes('modulenotfounderror') || backendMsg.toLowerCase().includes('importerror');
+        const msg = hasHint
+          ? backendMsg
+          : 'No pytest-compatible tests were found in this repository. FlakeGuard requires a Python project with test files named test_*.py or *_test.py.';
+        setError(msg);
         return;
       }
       if (result.status === 'error') {

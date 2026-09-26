@@ -191,8 +191,9 @@ class PipelineService:
         analyzer = TestAnalyzer()
         detection = analyzer.analyze_runs(test_runs)
 
-        # No tests collected by pytest (all runs returned empty)
+        # No tests collected by pytest (all runs returned empty — defensive fallback)
         if detection.total_test_runs == 0 and not detection.flaky_tests:
+            msg = "No pytest-compatible tests were found in this repository."
             return _error_response(
                 pipeline_id=pipeline_id,
                 status="no_tests",
@@ -201,8 +202,8 @@ class PipelineService:
                 branch=branch,
                 commit_sha=commit_sha,
                 started_at=started_at,
-                errors=[{"code": "NO_TESTS", "message": "No supported pytest tests were found."}],
-                message="No supported pytest tests were found.",
+                errors=[{"code": "NO_TESTS", "message": msg}],
+                message=msg,
             )
 
         flaky_tests_data = [
