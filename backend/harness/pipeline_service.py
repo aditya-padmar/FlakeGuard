@@ -1,26 +1,43 @@
 """Core pipeline execution service for FlakeGuard (F1 -> F2 -> F3 -> F4)."""
 import asyncio
-import json
 import logging
-import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from backend.models.detection import FlakyTest, DetectionResult, TestStatus, TestExecution, TestRun
-from backend.harness.git_service import GitService
+from backend.models.detection import DetectionResult, TestStatus
+from backend.harness.runner import TestRunner, normalize_pytest_target
+from backend.harness.executor import TestExecutor
+from backend.harness.analyzer import TestAnalyzer
+from backend.harness.validate import RepositoryValidator
+from backend.bob.agent import BobAgent
+from backend.remediation.generator import FixGenerator
+from backend.auditor.auditor import Auditor
 
+logger = logging.getLogger(__name__)
 
-# ── Canonical empty detection / metrics blocks used when a run produces no data ──
 
 def _empty_detection(total_runs: int = 0) -> Dict[str, Any]:
     return {
         "total_runs": total_runs,
+        "total_unique_tests": 0,
         "flaky_tests_count": 0,
         "confidence": 0.0,
         "flaky_tests": [],
         "stable_tests": [],
+        "rejected_tests": [],
+    }
+
+
+def _empty_audit() -> Dict[str, Any]:
+    return {
+        "report_id": "",
+        "total_quarantined": 0,
+        "diagnosed_count": 0,
+        "fixable_count": 0,
+        "unexplained_count": 0,
+        "tests": [],
     }
 
 
@@ -46,24 +63,27 @@ def _error_response(
     errors: List[Dict[str, str]],
     validation: Optional[Dict[str, Any]] = None,
     message: str = "",
+    requested_runs: int = 0,
 ) -> Dict[str, Any]:
-    """Build a response that always satisfies the frontend schema."""
+    """Return a complete, empty schema without claiming unobserved executions."""
     return {
         "pipeline_id": pipeline_id,
         "status": status,
         "source_type": source_type,
         "repository": repo_url or "",
         "branch": branch or "main",
-        "commit_sha": commit_sha or "HEAD",
+        "commit_sha": commit_sha or "unknown",
         "started_at": started_at,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "runs": 0,
+        "requested_runs": requested_runs,
+        "analysis_mode": "not_executed",
         "validation": validation or {},
         "message": message,
         "detection": _empty_detection(),
         "classifications": [],
         "fixes": [],
-        "quarantine_audit": {},
+        "quarantine_audit": _empty_audit(),
         "quarantine_list": [],
         "root_causes_chart": [],
         "metrics": _empty_metrics(),
@@ -71,160 +91,140 @@ def _error_response(
     }
 
 
-from backend.harness.runner import TestRunner  # noqa: E402
-from backend.harness.executor import TestExecutor  # noqa: E402
-from backend.harness.analyzer import TestAnalyzer  # noqa: E402
-from backend.harness.validate import RepositoryValidator  # noqa: E402
-from backend.bob.agent import BobAgent  # noqa: E402
-from backend.remediation.generator import FixGenerator  # noqa: E402
-from backend.auditor.auditor import Auditor  # noqa: E402
-
-logger = logging.getLogger(__name__)
+def _relative_path(repo: Path, file_path: str) -> str:
+    """Canonical API identity; never expose or resolve files outside this repo."""
+    normalized = normalize_pytest_target(str(file_path), repo)
+    path = Path(normalized)
+    absolute = path if path.is_absolute() else repo / path
+    try:
+        return absolute.resolve().relative_to(repo).as_posix()
+    except ValueError as exc:
+        raise ValueError("Test file is outside the analyzed repository") from exc
 
 
 def find_test_file(repo: Path, file_path: str) -> Optional[Path]:
-    """Resolve test file path relative to repo or by filename search."""
-    p = repo / file_path
-    if p.exists() and p.is_file():
-        return p
-    candidates = list(repo.glob(f"**/{Path(file_path).name}"))
-    return candidates[0] if candidates else None
+    """Resolve an exact repository path, not the first same-named file on disk."""
+    target = repo / _relative_path(repo, file_path)
+    return target if target.is_file() else None
 
 
 class PipelineService:
-    """Executes the complete FlakeGuard end-to-end detection, classification, remediation, and audit."""
+    """Execute supported tests; source heuristics are not execution evidence."""
+
+    EXECUTION_TIMEOUT_SECONDS = 300.0
 
     @classmethod
-    async def _run_polyglot_audit(
-        cls,
-        repo_path: Path,
-        validation: Dict[str, Any],
-        num_runs: int = 5,
-        test_pattern: Optional[str] = None
-    ) -> DetectionResult:
-        """
-        Polyglot audit mode for any programming language (C/C++, ESP32, JS/TS, Go, Java, Python).
-        Discovers code/test units and analyzes them with BobAgent's parallel subagents.
-        """
-        agent = BobAgent()
-        discovered = GitService.discover_tests(repo_path)
-        if not discovered and validation.get("test_files"):
-            discovered = [repo_path / f for f in validation.get("test_files", []) if (repo_path / f).exists()]
+    def _build_details(cls, repo_path: Path, detection: DetectionResult) -> Dict[str, Any]:
+        """Worker boundary for source I/O and Bob's synchronous provider clients."""
+        return asyncio.run(cls._classify_remediate_audit(repo_path, detection))
 
-        flaky_tests: List[FlakyTest] = []
-        stable_tests: List[str] = []
-        now = datetime.now(timezone.utc)
-        lang = str(validation.get("primary_language", "generic")).lower()
+    @classmethod
+    async def _classify_remediate_audit(
+        cls, repo_path: Path, detection: DetectionResult
+    ) -> Dict[str, Any]:
+        classifications = []
+        fixes = []
+        errors = []
+        agent = None
+        try:
+            if detection.flaky_tests:
+                agent = BobAgent()
+                sources: Dict[str, str] = {}
+                file_cache: Dict[str, str] = {}
+                tests_with_sources = []
+                for test in detection.flaky_tests:
+                    target = find_test_file(repo_path, test.file_path)
+                    if target is None:
+                        errors.append({
+                            "code": "SOURCE_UNAVAILABLE",
+                            "message": f"Source unavailable for {test.test_name}; classification skipped.",
+                        })
+                        continue
+                    key = str(target)
+                    if key not in file_cache:
+                        file_cache[key] = target.read_text(encoding="utf-8", errors="replace")
+                    sources[test.test_name] = file_cache[key]
+                    # Bob's extractor needs an actual path, but public detection
+                    # and joins must retain repository-relative identities.
+                    tests_with_sources.append(test.model_copy(update={"file_path": key}))
 
-        for file_path in discovered[:30]:
-            if not file_path.is_file():
-                continue
-            try:
-                rel_path = str(file_path.relative_to(repo_path))
-            except ValueError:
-                rel_path = file_path.name
+                classifications = await agent.classify_batch(tests_with_sources, sources)
+                generator = FixGenerator()
+                for classification in classifications:
+                    source = sources.get(classification.test_name, "")
+                    # The generator reads the real file through its absolute path.
+                    fix = await generator.generate_fix(classification, source)
+                    public_path = _relative_path(repo_path, classification.file_path)
+                    classification.file_path = public_path
+                    fix.file_path = public_path
+                    for suggestion in fix.suggestions:
+                        if suggestion.diff:
+                            suggestion.diff.file_path = public_path
+                            # Diff headers are display/patch identities too.
+                            absolute_path = str(repo_path / public_path)
+                            suggestion.diff.unified_diff = suggestion.diff.unified_diff.replace(
+                                f"a/{absolute_path}", f"a/{public_path}"
+                            ).replace(f"b/{absolute_path}", f"b/{public_path}")
+                    fixes.append(fix)
+        finally:
+            client = getattr(agent, "llm_client", None)
+            if client is not None and hasattr(client, "close"):
+                try:
+                    client.close()
+                except Exception:
+                    logger.warning("Could not close pipeline provider client", exc_info=True)
 
-            try:
-                content = file_path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
+        audit_data = _empty_audit()
+        quarantine_path = repo_path / "QUARANTINE.md"
+        # Missing quarantine is empty, not the unrelated sample repository's list.
+        # Audit also runs when there are no flaky tests to classify.
+        if quarantine_path.is_file():
+            report = Auditor().audit_quarantine(
+                quarantine_path=str(quarantine_path),
+                classifications=classifications,
+                repo_path=str(repo_path),
+            )
+            audit_data = {
+                "report_id": report.report_id,
+                "total_quarantined": report.total_quarantined,
+                "diagnosed_count": report.diagnosed_count,
+                "fixable_count": report.fixable_count,
+                "unexplained_count": report.unexplained_count,
+                "tests": [
+                    {
+                        "test_name": t.test_name,
+                        "status": t.status.value,
+                        "diagnosed": t.diagnosed,
+                        "root_cause": t.root_cause,
+                        "confidence": t.confidence,
+                        "fixable": t.fixable,
+                        "fix_strategy": t.fix_strategy,
+                        "quarantine_reason": t.quarantine_reason,
+                        "quarantined_at": t.quarantined_at.isoformat() if t.quarantined_at else None,
+                        "source": "QUARANTINE.md",
+                    }
+                    for t in report.quarantined_tests
+                ],
+            }
 
-            if not content.strip():
-                continue
-
-            # Identify candidate functions or blocks
-            unit_names = []
-            if "c" in lang:
-                c_funcs = re.findall(r"(?:void|int|bool|status_t|static\s+\w+)\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*\{", content)
-                unit_names = [f for f in c_funcs if f not in ("if", "while", "for", "switch", "return")][:5]
-            elif "javascript" in lang or "node" in lang:
-                js_tests = re.findall(r"(?:test|it)\s*\(\s*['\"]([^'\"]+)['\"]", content)
-                unit_names = js_tests[:5]
-            elif "go" in lang:
-                go_tests = re.findall(r"func\s+(Test\w+)\s*\(", content)
-                unit_names = go_tests[:5]
-
-            if not unit_names:
-                unit_names = [file_path.stem]
-
-            for unit in unit_names:
-                test_name = f"{rel_path}::{unit}"
-                if test_pattern and test_pattern.lower() not in test_name.lower():
-                    continue
-
-                source_snippet = agent.extract_test_source(rel_path, unit)
-                if not source_snippet or len(source_snippet) < 20:
-                    source_snippet = content[:2500]
-
-                dummy_flaky = FlakyTest(
-                    test_name=test_name,
-                    file_path=rel_path,
-                    first_seen=now,
-                    last_seen=now,
-                    total_runs=num_runs,
-                    pass_count=num_runs,
-                    fail_count=0,
-                    flake_rate=0.0
-                )
-                classification_res = await agent.classifier.classify(
-                    flaky_test=dummy_flaky,
-                    test_source=source_snippet
-                )
-
-                best_score = max(classification_res.get("subagent_scores", {}).values(), default=0.0)
-                if best_score >= 0.20:
-                    fail_runs = max(1, int(round(num_runs * min(best_score, 0.7))))
-                    pass_runs = max(1, num_runs - fail_runs)
-                    flake_rate = round(fail_runs / (pass_runs + fail_runs), 2)
-                    interleaved_history = []
-                    f_idx, p_idx = 0, 0
-                    for i in range(pass_runs + fail_runs):
-                        if i % 2 == 1 and f_idx < fail_runs:
-                            interleaved_history.append(TestStatus.FAILED)
-                            f_idx += 1
-                        elif p_idx < pass_runs:
-                            interleaved_history.append(TestStatus.PASSED)
-                            p_idx += 1
-                        else:
-                            interleaved_history.append(TestStatus.FAILED)
-
-                    evidence_descriptions = [e.description for e in classification_res.get("evidence", [])]
-                    flaky_item = FlakyTest(
-                        test_name=test_name,
-                        file_path=rel_path,
-                        first_seen=now,
-                        last_seen=now,
-                        total_runs=pass_runs + fail_runs,
-                        pass_count=pass_runs,
-                        fail_count=fail_runs,
-                        flake_rate=flake_rate,
-                        flakiness_score=round(best_score * 100, 1),
-                        confidence=round(best_score, 2),
-                        status_history=interleaved_history,
-                        recent_failures=evidence_descriptions[:3] if evidence_descriptions else ["Intermittent concurrency or timing hazard detected in source."]
-                    )
-                    flaky_tests.append(flaky_item)
-                else:
-                    stable_tests.append(test_name)
-
-        if not flaky_tests and not stable_tests and discovered:
-            try:
-                stable_tests.append(str(discovered[0].relative_to(repo_path)))
-            except ValueError:
-                stable_tests.append(discovered[0].name)
-
-        total_runs = max(num_runs, len(flaky_tests) + len(stable_tests))
-        return DetectionResult(
-            detection_id=f"det_{uuid.uuid4().hex[:8]}",
-            repository=str(repo_path),
-            analysis_period_start=now,
-            analysis_period_end=now,
-            total_test_runs=total_runs,
-            flaky_tests=flaky_tests,
-            detection_confidence=0.85 if flaky_tests else 0.5,
-            stable_tests=stable_tests,
-            total_unique_tests=len(flaky_tests) + len(stable_tests)
-        )
+        return {
+            "classifications": [
+                {
+                    "classification_id": c.classification_id,
+                    "test_name": c.test_name,
+                    "file_path": c.file_path,
+                    "root_cause": c.root_cause.value,
+                    "confidence": c.confidence.value,
+                    "evidence": [e.description for e in c.evidence],
+                    "reasoning": c.reasoning,
+                    "suggested_fix_area": c.suggested_fix_area,
+                }
+                for c in classifications
+            ],
+            "fixes": [fix.model_dump(mode="json") for fix in fixes],
+            "quarantine_audit": audit_data,
+            "errors": errors,
+        }
 
     @classmethod
     async def run_pipeline(
@@ -235,251 +235,142 @@ class PipelineService:
         source_type: str = "local",
         repo_url: Optional[str] = None,
         branch: Optional[str] = None,
-        commit_sha: Optional[str] = None
+        commit_sha: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Execute full F1-F4 pipeline on a specified repository directory.
-        """
+        """Run F1-F4 without replacing errors/unsupported code with invented data."""
         pipeline_id = str(uuid.uuid4())
-        repo_path = repo_path.resolve()
-        if not repo_path.exists():
-            raise FileNotFoundError(f"Repository path does not exist: {repo_path}")
-
+        repo_path = Path(repo_path).resolve()
         started_at = datetime.now(timezone.utc).isoformat()
+        validation: Dict[str, Any] = {}
 
-        # Polyglot repository validation
-        validator = RepositoryValidator()
-        validation = validator.detect_repository_compatibility(repo_path)
+        def failure(status: str, code: str, message: str) -> Dict[str, Any]:
+            return _error_response(
+                pipeline_id, status, source_type, repo_url or str(repo_path),
+                branch, commit_sha, started_at,
+                [{"code": code, "message": message}], validation, message, num_runs,
+            )
 
-        logger.info(
-            f"Repository validation: compatible={validation['compatible']}, "
-            f"lang={validation.get('primary_language')}, framework={validation.get('framework')}, "
-            f"confidence={validation['confidence']:.1%}"
-        )
+        if not 2 <= num_runs <= 20:
+            return failure("error", "INVALID_RUN_COUNT", "Number of runs must be between 2 and 20.")
+        if not await asyncio.to_thread(repo_path.is_dir):
+            return failure("error", "INVALID_REPOSITORY", "Repository path is not an existing directory.")
+
+        try:
+            validation = await asyncio.to_thread(
+                RepositoryValidator.detect_repository_compatibility, repo_path
+            )
+        except Exception:
+            logger.exception("Repository validation failed")
+            return failure("error", "VALIDATION_FAILED", "Could not inspect repository compatibility.")
 
         if not validation["compatible"]:
-            msg = (
-                "Repository does not appear to contain recognizable source code or test files. "
-                f"Confidence: {validation['confidence']:.1%}. "
-                f"Warnings: {', '.join(validation['warnings'])}"
-            )
-            return _error_response(
-                pipeline_id=pipeline_id,
-                status="no_tests",
-                source_type=source_type,
-                repo_url=repo_url or str(repo_path),
-                branch=branch,
-                commit_sha=commit_sha,
-                started_at=started_at,
-                errors=[{"code": "NO_TESTS", "message": msg}],
-                validation=validation,
-                message=msg,
+            return failure("no_tests", "NO_TESTS", "No supported test framework or source files were found.")
+        if validation.get("framework") != "pytest" or validation.get("mode") != "dynamic":
+            framework = validation.get("framework", "unknown")
+            return failure(
+                "unsupported", "UNSUPPORTED_FRAMEWORK",
+                f"Detected {framework}; reliable test execution is not supported by this pipeline yet. "
+                "No tests were run. Static source indicators are not flaky-test evidence.",
             )
 
-        # Step 1: Detection (F1)
-        detection = None
-        is_polyglot_mode = (validation.get("mode") == "static_audit" or validation.get("framework") != "pytest")
-
-        if not is_polyglot_mode:
-            try:
-                runner = TestRunner(str(repo_path))
-                executor = TestExecutor(runner)
-                test_runs = await executor.execute_multiple_runs(
-                    num_runs=num_runs,
-                    test_pattern=test_pattern
-                )
-                analyzer = TestAnalyzer()
-                detection = analyzer.analyze_runs(test_runs)
-            except Exception as exc:
-                logger.info(f"Dynamic runner encountered {exc}. Switching to polyglot audit mode.")
-                is_polyglot_mode = True
-
-        if is_polyglot_mode or not detection or (detection.total_test_runs == 0 and not detection.flaky_tests):
-            logger.info("Executing Polyglot Static & Concurrency Analysis...")
-            detection = await cls._run_polyglot_audit(
-                repo_path=repo_path,
-                validation=validation,
-                num_runs=num_runs,
-                test_pattern=test_pattern
+        runner = TestRunner(repo_path)
+        try:
+            # Cached by the runner: preflight happens once, not for every rerun.
+            test_ids = await asyncio.to_thread(runner.collect_test_ids)
+            if not test_ids or (test_pattern and not any(test_pattern in node for node in test_ids)):
+                return failure("no_tests", "NO_TESTS", "No tests matched the requested selection.")
+            test_runs = await asyncio.wait_for(
+                TestExecutor(runner).execute_multiple_runs(num_runs=num_runs, test_pattern=test_pattern),
+                timeout=cls.EXECUTION_TIMEOUT_SECONDS,
+            )
+            for run in test_runs:
+                for execution in run.executions:
+                    execution.test_name = normalize_pytest_target(execution.test_name, repo_path)
+                    execution.file_path = _relative_path(repo_path, execution.file_path)
+                run.ordering = [normalize_pytest_target(node, repo_path) for node in run.ordering]
+            detection = await asyncio.to_thread(TestAnalyzer().analyze_runs, test_runs)
+        except TimeoutError:
+            return failure("error", "EXECUTION_TIMEOUT", "Test execution exceeded the pipeline time budget.")
+        except Exception:
+            logger.exception("Dynamic test execution failed")
+            return failure(
+                "error", "EXECUTION_FAILED",
+                "Test collection or execution failed. Check the runner environment and test configuration; "
+                "no static results have been substituted.",
             )
 
-        flaky_tests_data = [
-            {
-                "test_name": t.test_name,
-                "file_path": t.file_path,
-                "flake_rate": t.flake_rate,
-                "total_runs": t.total_runs,
-                "pass_count": t.pass_count,
-                "fail_count": t.fail_count,
-                "recent_failures": t.recent_failures
-            }
-            for t in detection.flaky_tests
-        ]
+        if not detection.total_unique_tests:
+            return failure("no_tests", "NO_TESTS", "The runner returned no test executions.")
 
-        classifications_data = []
-        fixes_data = []
-        audit_data = {}
-
-        if detection.flaky_tests:
-            # Step 2: Classification (F2) with BobAgent
-            agent = BobAgent()
-            test_sources = {}
-            for test in detection.flaky_tests:
-                target_file = find_test_file(repo_path, test.file_path)
-                if target_file and target_file.exists():
-                    test.file_path = str(target_file)
-                    test_sources[test.test_name] = target_file.read_text(encoding="utf-8")
-                else:
-                    test_sources[test.test_name] = f"# Source for {test.test_name}"
-
-            classifications = await agent.classify_batch(detection.flaky_tests, test_sources)
-
-            classifications_data = [
-                {
-                    "classification_id": c.classification_id,
-                    "test_name": c.test_name,
-                    "file_path": c.file_path,
-                    "root_cause": c.root_cause.value,
-                    "confidence": c.confidence.value,
-                    "evidence": [e.description for e in c.evidence],
-                    "reasoning": c.reasoning,
-                    "suggested_fix_area": c.suggested_fix_area
-                }
-                for c in classifications
-            ]
-
-            # Step 3: Remediation Generator & Diffs (F3)
-            fix_generator = FixGenerator()
-            for classification in classifications:
-                target_file = find_test_file(repo_path, classification.file_path)
-                if target_file and target_file.exists():
-                    test_source = target_file.read_text(encoding="utf-8")
-                else:
-                    test_source = agent.extract_test_source(classification.file_path, classification.test_name)
-
-                fix = await fix_generator.generate_fix(classification, test_source)
-                fixes_data.append({
-                    "fix_id": fix.fix_id,
-                    "test_name": fix.test_name,
-                    "file_path": fix.file_path,
-                    "status": fix.status.value,
-                    "suggestions": [
-                        {
-                            "suggestion_id": s.suggestion_id,
-                            "fix_type": s.fix_type.value if hasattr(s.fix_type, "value") else str(s.fix_type),
-                            "description": s.description,
-                            "rationale": s.rationale,
-                            "confidence": s.confidence,
-                            "diff": {
-                                "file_path": s.diff.file_path,
-                                "old_content": s.diff.old_content,
-                                "new_content": s.diff.new_content,
-                                "unified_diff": s.diff.unified_diff,
-                                "line_start": s.diff.line_start,
-                                "line_end": s.diff.line_end
-                            } if s.diff else None
-                        }
-                        for s in fix.suggestions
-                    ]
-                })
-
-            # Step 4: Quarantine & CI Audit (F4)
-            auditor = Auditor()
-            quarantine_path = repo_path / "QUARANTINE.md"
-            if not quarantine_path.exists():
-                quarantine_path = Path("sample-repo/QUARANTINE.md")
-
-            audit_report = auditor.audit_quarantine(
-                quarantine_path=str(quarantine_path),
-                classifications=classifications,
-                repo_path=str(repo_path)
-            )
-
-            audit_data = {
-                "report_id": audit_report.report_id,
-                "total_quarantined": audit_report.total_quarantined,
-                "diagnosed_count": audit_report.diagnosed_count,
-                "fixable_count": audit_report.fixable_count,
-                "unexplained_count": audit_report.unexplained_count,
-                "tests": [
-                    {
-                        "test_name": t.test_name,
-                        "status": t.status.value if hasattr(t.status, "value") else str(t.status),
-                        "diagnosed": t.diagnosed,
-                        "root_cause": t.root_cause,
-                        "confidence": t.confidence,
-                        "fixable": t.fixable,
-                        "fix_strategy": t.fix_strategy,
-                        "quarantine_reason": t.quarantine_reason,
-                        "source": t.source,
-                    }
-                    for t in audit_report.quarantined_tests
-                ]
+        try:
+            details = await asyncio.to_thread(cls._build_details, repo_path, detection)
+        except Exception:
+            logger.exception("Classification, remediation, or audit failed")
+            details = {
+                "classifications": [], "fixes": [], "quarantine_audit": _empty_audit(),
+                "errors": [{"code": "POSTPROCESSING_FAILED", "message": "Detection completed, but classification, remediation, or audit failed."}],
             }
 
-        # Calculate metrics & root cause breakdown
-        cause_counts = {}
-        for c in classifications_data:
-            cause = c["root_cause"]
+        # An all-error run is not a clean suite. Preserve observations, but make
+        # execution problems visible instead of reporting a successful analysis.
+        if any(run.returncode not in (None, 0, 1) for run in test_runs):
+            details["errors"].append({"code": "RUNNER_ERROR", "message": "One or more runs ended with a runner or collection error."})
+        elif any(e.status == TestStatus.ERROR for run in test_runs for e in run.executions):
+            details["errors"].append({"code": "TEST_EXECUTION_ERROR", "message": "One or more tests had setup or teardown errors; analysis is incomplete."})
+        elif not any(e.status in (TestStatus.PASSED, TestStatus.FAILED) for run in test_runs for e in run.executions):
+            details["errors"].append({"code": "NO_EXECUTABLE_RESULTS", "message": "Only skipped or error outcomes were observed; flakiness is inconclusive."})
+
+        cause_counts: Dict[str, int] = {}
+        for classification in details["classifications"]:
+            cause = classification["root_cause"]
             cause_counts[cause] = cause_counts.get(cause, 0) + 1
-
-        root_causes_chart = [
+        quarantine_list = [
             {
-                "root_cause": cause,
-                "count": count,
-                "percentage": round((count / len(classifications_data)) * 100, 1) if classifications_data else 0
+                "quarantine_id": str(uuid.uuid4())[:8],
+                "test_name": test["test_name"],
+                "file_path": test["test_name"].split("::", 1)[0] if "::" in test["test_name"] else "",
+                "reason": test.get("quarantine_reason") or "Quarantined test",
+                "status": test["status"],
+                "quarantined_at": test.get("quarantined_at"),
             }
-            for cause, count in cause_counts.items()
+            for test in details["quarantine_audit"]["tests"]
         ]
-
-        # Quarantine list for table
-        quarantine_list = []
-        if audit_data and "tests" in audit_data:
-            for t in audit_data["tests"]:
-                quarantine_list.append({
-                    "quarantine_id": str(uuid.uuid4())[:8],
-                    "test_name": t["test_name"],
-                    "file_path": t.get("source", "tests/"),
-                    "reason": t.get("quarantine_reason") or "Flaky test quarantined",
-                    "status": t.get("status", "active"),
-                    "quarantined_at": datetime.now(timezone.utc).isoformat()
-                })
-
-        diff_count = sum(
-            1 for f in fixes_data for s in f.get("suggestions", []) if s.get("diff") and s["diff"].get("unified_diff")
-        )
-
-        metrics_summary = {
-            "total_tests": detection.total_test_runs,
-            "flaky_tests": len(detection.flaky_tests),
-            "flakiness_rate": round(len(detection.flaky_tests) / max(1, detection.total_test_runs) * 100, 1),
-            "active_quarantined": audit_data.get("total_quarantined", 0),
-            "fixes_applied": diff_count,
-            "avg_resolution_time": 4.2
-        }
 
         return {
             "pipeline_id": pipeline_id,
-            "status": "success",
+            "status": "error" if details["errors"] else "success",
             "source_type": source_type,
             "repository": repo_url or str(repo_path),
-            "branch": branch or "main",
-            "commit_sha": commit_sha or "HEAD",
+            "branch": branch or test_runs[0].branch,
+            "commit_sha": commit_sha or test_runs[0].commit_sha,
             "started_at": started_at,
             "completed_at": datetime.now(timezone.utc).isoformat(),
-            "runs": num_runs,
+            "runs": len(test_runs),
+            "requested_runs": num_runs,
+            "analysis_mode": "dynamic",
+            "validation": validation,
             "detection": {
-                "total_runs": detection.total_test_runs,
+                "total_runs": len(test_runs),
+                "total_unique_tests": detection.total_unique_tests,
                 "flaky_tests_count": len(detection.flaky_tests),
                 "confidence": detection.detection_confidence,
-                "flaky_tests": flaky_tests_data,
+                "flaky_tests": [test.model_dump(mode="json") for test in detection.flaky_tests],
                 "stable_tests": list(detection.stable_tests),
+                "rejected_tests": detection.rejected_tests,
             },
-            "classifications": classifications_data,
-            "fixes": fixes_data,
-            "quarantine_audit": audit_data,
+            **details,
             "quarantine_list": quarantine_list,
-            "root_causes_chart": root_causes_chart,
-            "metrics": metrics_summary,
-            "errors": [],
+            "root_causes_chart": [
+                {"root_cause": cause, "count": count, "percentage": round(count / len(details["classifications"]) * 100, 1)}
+                for cause, count in cause_counts.items()
+            ],
+            "metrics": {
+                **_empty_metrics(),
+                "total_tests": detection.total_unique_tests,
+                "flaky_tests": len(detection.flaky_tests),
+                "flakiness_rate": round(len(detection.flaky_tests) / detection.total_unique_tests * 100, 1),
+                "active_quarantined": details["quarantine_audit"]["total_quarantined"],
+                # Proposals are not applied or verified fixes.
+                "fixes_applied": 0,
+            },
         }

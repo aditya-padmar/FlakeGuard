@@ -1,5 +1,6 @@
 """Repository validation and compatibility detection for FlakeGuard."""
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List
 
@@ -52,15 +53,27 @@ class RepositoryValidator:
         Go (go test), Java (Maven/Gradle), Rust (Cargo), and generic source code.
         """
         repo_path = Path(repo_path).resolve()
-        
-        # 1. First check pytest compatibility
-        pytest_result = cls.detect_pytest_compatibility(repo_path)
-        if pytest_result.get("compatible"):
+        if not repo_path.is_dir():
             return {
-                **pytest_result,
-                "primary_language": "python",
-                "framework": "pytest",
-                "mode": "dynamic"
+                "compatible": False,
+                "primary_language": "unknown",
+                "framework": "unknown",
+                "mode": "static_audit",
+                "confidence": 0.0,
+                "indicators": [],
+                "warnings": [f"Repository path is not a directory: {repo_path}"],
+                "test_files": [],
+                "config_files": [],
+            }
+
+        # The compatibility entry point now detects multiple frameworks. Preserve
+        # its identity; a Jest/Go/Java project must never be relabelled as pytest.
+        framework_result = cls.detect_pytest_compatibility(repo_path)
+        if framework_result.get("compatible"):
+            return {
+                **framework_result,
+                "primary_language": framework_result["language"],
+                "mode": "dynamic" if framework_result["framework"] == "pytest" else "static_audit",
             }
 
         # 2. Check polyglot indicators
@@ -80,20 +93,25 @@ class RepositoryValidator:
             result["warnings"].append(f"Repository path does not exist: {repo_path}")
             return result
 
-        ignore_dirs = {".git", ".venv", "venv", "node_modules", ".pytest_cache", "__pycache__", "build", "dist"}
+        ignore_dirs = {".git", ".venv", "venv", "env", "node_modules", ".pytest_cache", "__pycache__", "build", "dist", "target", "vendor"}
+        # Scan once and prune before descending. Applying ignores after globbing
+        # still traverses dependencies and repeated extensions multiply that cost.
+        files_by_extension: Dict[str, List[Path]] = {}
+        for directory, subdirs, filenames in os.walk(repo_path, followlinks=False):
+            subdirs[:] = sorted(
+                name for name in subdirs
+                if name not in ignore_dirs and not name.startswith(".")
+            )
+            for name in sorted(filenames):
+                if name.startswith("."):
+                    continue
+                path = Path(directory) / name
+                matches = files_by_extension.setdefault(path.suffix.lower(), [])
+                if len(matches) < 20:
+                    matches.append(path)
 
         def find_files(exts: List[str], max_count: int = 20) -> List[Path]:
-            matched = []
-            for ext in exts:
-                try:
-                    for f in repo_path.glob(f"**/*{ext}"):
-                        if f.is_file() and not any(part in ignore_dirs or part.startswith(".") for part in f.parts):
-                            matched.append(f)
-                            if len(matched) >= max_count:
-                                return matched
-                except Exception:
-                    continue
-            return matched
+            return [path for ext in exts for path in files_by_extension.get(ext, [])][:max_count]
 
         # C / C++ / Embedded (ESP32, CMake, Arduino, Make)
         c_configs = ["CMakeLists.txt", "Makefile", "sdkconfig", "platformio.ini", "sdkconfig.defaults"]
@@ -200,10 +218,17 @@ class RepositoryValidator:
             "warnings": [],
         }
         repo_path = Path(repo_path).resolve()
-        py_files = list(repo_path.glob("**/*.py"))
-        if py_files:
-            result["has_python"] = True
-            result["python_files"] = [str(f.relative_to(repo_path)) for f in py_files[:5]]
+        ignored = {"venv", "env", "node_modules", "__pycache__", "build", "dist", "target", "vendor"}
+        for directory, subdirs, filenames in os.walk(repo_path, followlinks=False):
+            subdirs[:] = [name for name in subdirs if name not in ignored and not name.startswith(".")]
+            for name in filenames:
+                if name.endswith(".py") and not name.startswith("."):
+                    result["python_files"].append(str((Path(directory) / name).relative_to(repo_path)))
+                    if len(result["python_files"]) >= 5:
+                        break
+            if len(result["python_files"]) >= 5:
+                break
+        result["has_python"] = bool(result["python_files"])
         for venv_name in (".venv", "venv", "env", ".env"):
             if (repo_path / venv_name).is_dir():
                 result["virtualenv"] = venv_name

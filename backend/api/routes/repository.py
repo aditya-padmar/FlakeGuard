@@ -1,4 +1,5 @@
 """Repository and upload integration API routes for FlakeGuard."""
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -25,6 +26,16 @@ def _safe_error(exc: Exception) -> str:
 # In-memory cache of recent pipeline runs
 _latest_analysis: Optional[Dict[str, Any]] = None
 _analysis_history: List[Dict[str, Any]] = []
+_MAX_ANALYSIS_HISTORY = 20
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+
+
+def _remember_analysis(result: Dict[str, Any]) -> None:
+    """Bound retained full-source/diff payloads instead of growing indefinitely."""
+    global _latest_analysis
+    _latest_analysis = result
+    _analysis_history.insert(0, result)
+    del _analysis_history[_MAX_ANALYSIS_HISTORY:]
 
 
 class CloneRequest(BaseModel):
@@ -63,7 +74,8 @@ async def clone_and_analyze(request: CloneRequest):
     global _latest_analysis
     try:
         # 1. Clone repository
-        clone_result = GitService.clone_repository(
+        clone_result = await asyncio.to_thread(
+            GitService.clone_repository,
             repo_url=request.repo_url,
             branch=request.branch,
             token=request.token
@@ -89,8 +101,7 @@ async def clone_and_analyze(request: CloneRequest):
             "test_files": clone_result["test_files"]
         }
 
-        _latest_analysis = pipeline_result
-        _analysis_history.insert(0, pipeline_result)
+        _remember_analysis(pipeline_result)
         return pipeline_result
 
     except Exception as e:
@@ -101,7 +112,7 @@ async def clone_and_analyze(request: CloneRequest):
 @router.post("/upload")
 async def upload_and_analyze(
     file: UploadFile = File(...),
-    num_runs: int = Form(5),
+    num_runs: int = Form(5, ge=2, le=20),
     test_pattern: Optional[str] = Form(None)
 ):
     """
@@ -109,8 +120,11 @@ async def upload_and_analyze(
     """
     global _latest_analysis
     try:
-        contents = await file.read()
-        upload_result = GitService.handle_archive_upload(
+        contents = await file.read(_MAX_UPLOAD_BYTES + 1)
+        if len(contents) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Upload exceeds the 50 MiB limit.")
+        upload_result = await asyncio.to_thread(
+            GitService.handle_archive_upload,
             file_bytes=contents,
             filename=file.filename or "uploaded.zip"
         )
@@ -131,13 +145,16 @@ async def upload_and_analyze(
             "test_files": upload_result["test_files"]
         }
 
-        _latest_analysis = pipeline_result
-        _analysis_history.insert(0, pipeline_result)
+        _remember_analysis(pipeline_result)
         return pipeline_result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Upload analysis failed: %s", e)
         raise HTTPException(status_code=400, detail=_safe_error(e))
+    finally:
+        await file.close()
 
 
 @router.post("/analyze-local")
@@ -152,8 +169,8 @@ async def analyze_local(request: LocalAnalyzeRequest):
             # Check relative to project root
             repo_path = Path(request.repo_path).resolve()
 
-        if not repo_path.exists():
-            raise FileNotFoundError(f"Path does not exist: {request.repo_path}")
+        if not await asyncio.to_thread(repo_path.is_dir):
+            raise FileNotFoundError("Repository path is not an existing directory")
 
         pipeline_result = await PipelineService.run_pipeline(
             repo_path=repo_path,
@@ -162,8 +179,7 @@ async def analyze_local(request: LocalAnalyzeRequest):
             source_type="local"
         )
 
-        _latest_analysis = pipeline_result
-        _analysis_history.insert(0, pipeline_result)
+        _remember_analysis(pipeline_result)
         return pipeline_result
 
     except Exception as e:

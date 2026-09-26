@@ -1,0 +1,84 @@
+{
+  "session_id": "d8c7f57e-5a1c-48ae-9676-3258b2ebe29d",
+  "timestamp": "2026-09-26T10:53:06.639355+00:00",
+  "test_name": "frontend\\src\\lib\\db.ts::db",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_d7830d78\\frontend\\src\\lib\\db.ts",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "high",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 1.0,
+    "environment": 0.8
+  },
+  "reasoning": "State leakage detected (100%): Line 42: Found state_mutation pattern: 'this.set('users', INITIAL_USERS);'; Line 45: Found state_mutation pattern: 'this.set('attendance', []);'; Line 48: Found state_mutation pattern: 'this.set('leaves', []);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 42: Found state_mutation pattern: 'this.set('users', INITIAL_USERS);'",
+      "source": "source_code",
+      "snippet": "this.set('users', INITIAL_USERS);",
+      "line_number": 42
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 45: Found state_mutation pattern: 'this.set('attendance', []);'",
+      "source": "source_code",
+      "snippet": "this.set('attendance', []);",
+      "line_number": 45
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 48: Found state_mutation pattern: 'this.set('leaves', []);'",
+      "source": "source_code",
+      "snippet": "this.set('leaves', []);",
+      "line_number": 48
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 71: Found state_mutation pattern: 'users.push(user);'",
+      "source": "source_code",
+      "snippet": "users.push(user);",
+      "line_number": 71
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 73: Found state_mutation pattern: 'this.set('users', users);'",
+      "source": "source_code",
+      "snippet": "this.set('users', users);",
+      "line_number": 73
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 91: Found state_mutation pattern: 'records.push(record);'",
+      "source": "source_code",
+      "snippet": "records.push(record);",
+      "line_number": 91
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 93: Found state_mutation pattern: 'this.set('attendance', records);'",
+      "source": "source_code",
+      "snippet": "this.set('attendance', records);",
+      "line_number": 93
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 111: Found state_mutation pattern: 'requests.push(request);'",
+      "source": "source_code",
+      "snippet": "requests.push(request);",
+      "line_number": 111
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 113: Found state_mutation pattern: 'this.set('leaves', requests);'",
+      "source": "source_code",
+      "snippet": "this.set('leaves', requests);",
+      "line_number": 113
+    }
+  ],
+  "test_source_snippet": "import { User, Attendance, LeaveRequest, Role } from '../types';\n\nconst INITIAL_USERS: User[] = [\n {\n id: 'EMP-001',\n email: 'admin@dayflow.com',\n password: 'password',\n role: 'HR',\n name: 'Sarah Admin',\n phone: '555-0101',\n address: 'HQ Office',\n jobTitle: 'HR Director',\n department: 'Human Resources',\n salary: 95000,\n },\n {\n id: 'EMP-002',\n email: 'john@dayflow.com',\n password: 'password',\n role: 'Employee',\n name: 'John Doe',\n phone: '555-0202',\n address: 'Remote',\n jobTitle: 'Software Engine"
+}

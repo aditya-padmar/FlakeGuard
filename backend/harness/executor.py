@@ -1,4 +1,4 @@
-"""Test executor module for executing multi-run plans with early stopping."""
+"""Test executor module for executing complete multi-run plans."""
 import asyncio
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -18,7 +18,7 @@ class SingleRunConfig:
 
 
 class TestExecutor:
-    """Executes planned test runs with controlled variation and early-stop detection."""
+    """Executes every planned test run with controlled variation."""
 
     def __init__(self, runner: Any, analyzer: Optional[TestAnalyzer] = None):
         self.runner = runner
@@ -28,12 +28,8 @@ class TestExecutor:
         """Build deterministic RunPlan for N runs derived from base_seed."""
         jitter_cycle = [0, 15, 40, 5, 25, 10, 35, 20]
 
-        # The "exactly half" rule is deliberate and is a product requirement, not an
-        # implementation detail: the PRD's non-functional requirements demand a demo
-        # that is "repeatable, not a coin flip." If the environment test flakes at 40%,
-        # there is roughly a 17% chance per detection pass of collecting fewer than 3
-        # failures out of 10 runs, which would fail the checkpoint. Pinning chaos to
-        # ~50% makes the gate deterministic while still looking random on screen.
+        # Keep clean and perturbed runs balanced and reproducible so both
+        # environments are exercised without depending on random sampling luck.
         half_runs = num_runs // 2
         chaos_indices = set(random.Random(base_seed).sample(range(num_runs), half_runs))
 
@@ -64,12 +60,14 @@ class TestExecutor:
         test_pattern: Optional[str] = None,
         **kwargs,
     ) -> List[TestRun]:
-        """
-        Execute runs in batches with early stop.
+        """Execute all requested runs in batches, without inferring early stability.
+
+        A passing prefix cannot rule out failures in later planned variations.
+        Analysis is left to the caller after execution, avoiding repeated analysis
+        of growing partial results. The optional analyzer is retained for API compatibility.
         """
         plan = self.build_run_plan(num_runs=num_runs, base_seed=base_seed)
         accumulated_runs: List[TestRun] = []
-        running_flaky_candidates = 0
 
         for batch_start in range(0, num_runs, batch_size):
             batch_configs = plan[batch_start:batch_start + batch_size]
@@ -79,8 +77,7 @@ class TestExecutor:
                     f"[Run {config.run_index + 1}/{num_runs}] "
                     f"Seed: {config.ordering_seed} | "
                     f"Chaos: {has_chaos} | "
-                    f"Parallel: {config.parallel} | "
-                    f"Flaky candidates: {running_flaky_candidates}"
+                    f"Parallel: {config.parallel}"
                 )
 
                 run = await asyncio.to_thread(
@@ -93,27 +90,6 @@ class TestExecutor:
                     test_pattern=test_pattern,
                 )
                 accumulated_runs.append(run)
-
-            # Synchronous call without await
-            detection = self.analyzer.analyze_runs(accumulated_runs)
-            running_flaky_candidates = len(detection.flaky_tests)
-
-            # Early stop check:
-            all_seen_tests = {
-                e.test_name
-                for r in accumulated_runs
-                for e in r.executions
-            }
-            flaky_set = {t.test_name for t in detection.flaky_tests}
-            stable_set = set(detection.stable_tests)
-
-            if all_seen_tests and (flaky_set | stable_set) == all_seen_tests and len(accumulated_runs) < num_runs:
-                print(
-                    f"Early stop triggered after {len(accumulated_runs)} runs: "
-                    f"all {len(all_seen_tests)} tests conclusively classified "
-                    f"({len(flaky_set)} flaky, {len(stable_set)} stable)."
-                )
-                break
 
         return accumulated_runs
 

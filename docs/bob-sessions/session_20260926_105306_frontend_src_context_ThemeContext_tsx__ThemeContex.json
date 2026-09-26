@@ -1,0 +1,35 @@
+{
+  "session_id": "1f2e6c91-f2a7-4c0b-bad2-faf444e1fb3b",
+  "timestamp": "2026-09-26T10:53:06.632078+00:00",
+  "test_name": "frontend\\src\\context\\ThemeContext.tsx::ThemeContext",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_d7830d78\\frontend\\src\\context\\ThemeContext.tsx",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "medium",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.4,
+    "environment": 0.0
+  },
+  "reasoning": "State leakage detected (40%): Line 23: Found state_mutation pattern: 'root.classList.add('light');'; Line 26: Found state_mutation pattern: 'root.classList.add('dark');'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 23: Found state_mutation pattern: 'root.classList.add('light');'",
+      "source": "source_code",
+      "snippet": "root.classList.add('light');",
+      "line_number": 23
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 26: Found state_mutation pattern: 'root.classList.add('dark');'",
+      "source": "source_code",
+      "snippet": "root.classList.add('dark');",
+      "line_number": 26
+    }
+  ],
+  "test_source_snippet": "import React, { createContext, useContext, useState, useEffect } from 'react';\n\ntype Theme = 'dark' | 'light';\n\ninterface ThemeContextType {\n  theme: Theme;\n  toggleTheme: () => void;\n  setTheme: (theme: Theme) => void;\n}\n\nconst ThemeContext = createContext<ThemeContextType | undefined>(undefined);\n\nexport const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {\n  const [theme, setThemeState] = useState<Theme>(() => {\n    const saved = localStorage.getItem('theme') as T"
+}

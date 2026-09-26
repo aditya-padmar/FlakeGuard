@@ -1,0 +1,42 @@
+{
+  "session_id": "52bad316-57b6-4e01-8510-5dfad9b6db27",
+  "timestamp": "2026-09-26T10:55:10.037486+00:00",
+  "test_name": "frontend\\types.ts::types",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\frontend\\types.ts",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.4,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.75
+  },
+  "reasoning": "Environment or unseeded randomness flakiness identified (75%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 19: Found network_call pattern: '* @see https://tailwindcss.com/docs/configuration#prefix'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 189: Found network_call pattern: '* Hack from https://stackoverflow.com/questions/56687668/a-way-to-disable-type-ar",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 191: Found network_call pattern: '* Could be replaced with NoInfer utility type from TypeScript (https://www.typesc",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "export enum Player {\n  EMPTY = 0,\n  X = 1,\n  O = 2,\n}\n\nexport enum Difficulty {\n  EASY = 1, // Depth 1\n  MEDIUM = 2, // Depth 2\n  HARD = 3, // Depth 3 or 4\n}\n\nexport interface GameConfig {\n  mode: 'PvP' | 'PvAI';\n  difficulty: Difficulty;\n}\n\nexport type Move = [int: number, int: number]; // [boardIndex, cellIndex]\n\nexport interface GameResult {\n  id: string;\n  timestamp: number;\n  mode: 'PvP' | 'PvAI';\n  difficulty?: Difficulty;\n  winner: 'Player 1' | 'Player 2' | 'AI' | 'Draw'; // Draw logic ca"
+}

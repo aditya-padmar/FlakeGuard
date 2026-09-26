@@ -38,7 +38,7 @@ describe('classification normalization', () => {
 const quarantineEntry = (file_path: string, test_name = 'test_shared') => ({
   quarantine_id: file_path, test_name, file_path, reason: `Suppressed in ${file_path}`, status: 'active', quarantined_at: '',
 });
-const auditReport = (test_name = 'test_shared'): NonNullable<PipelineAnalysisResult['quarantine_audit']> => ({
+const auditReport = (test_name = 'test_shared'): Required<NonNullable<PipelineAnalysisResult['quarantine_audit']>> => ({
   report_id: 'q', total_quarantined: 1, diagnosed_count: 1, fixable_count: 1, unexplained_count: 0,
   tests: [{ test_name, diagnosed: true, fixable: true, status: 'active', root_cause: 'timing', confidence: '0.8', fix_strategy: 'wait', quarantine_reason: 'Audit reason', quarantined_at: null, source: 'QUARANTINE.md' }],
 });
@@ -57,8 +57,50 @@ describe('real analysis adapter', () => {
     expect(data.auditedCount).toBe(0);
     expect(data.totalTests).toBeNull();
   });
+  it.each([{}, null])('accepts an empty backend audit without inventing source counts', quarantine_audit => {
+    const data = adaptAnalysis({ ...emptyResult, quarantine_audit });
+    expect(data.tests).toEqual([]);
+    expect(data.auditedCount).toBe(0);
+    expect(data.auditSources.every(source => source.count === null)).toBe(true);
+  });
   it('preserves a legitimate zero total', () => {
     expect(adaptAnalysis({ ...emptyResult, metrics: { total_tests: 0, flaky_tests: 0, flakiness_rate: 0, active_quarantined: 0, fixes_applied: 0, avg_resolution_time: 0 } }).totalTests).toBe(0);
+  });
+  it('retains the first duplicate match in every indexed collection', () => {
+    const file_path = 'tests/a.py';
+    const test = { test_name: 'test_shared', file_path, flake_rate: .2, total_runs: 10, pass_count: 8, fail_count: 2, recent_failures: [] };
+    const firstFix = proposedFix(file_path);
+    firstFix.suggestions.unshift({ ...firstFix.suggestions[0], suggestion_id: 'no-diff', diff: null });
+    const data = adaptAnalysis({ ...emptyResult,
+      detection: { ...emptyResult.detection, flaky_tests: [test, { ...test, flake_rate: .9, pass_count: 1, fail_count: 9 }] },
+      classifications: [classification(file_path), { ...classification(file_path), reasoning: 'Wrong duplicate', root_cause: 'environment' }],
+      fixes: [firstFix, { ...proposedFix(file_path), status: 'verified' }],
+      quarantine_list: [quarantineEntry(file_path), { ...quarantineEntry(file_path), reason: 'Wrong duplicate' }],
+      quarantine_audit: auditReport(),
+    });
+    expect(data.tests).toHaveLength(1);
+    expect(data.tests[0]).toMatchObject({ rate: 20, passCount: 8, failCount: 2, cause: 'Data leakage', reasoning: 'Isolate the fixture', fixStatus: 'proposed', diff: '-shared\n+isolated', quarantine: 'Suppressed in tests/a.py' });
+  });
+  it.each([500, 2000])('joins %i records correctly with linear identity lookup work', count => {
+    let identityReads = 0;
+    const track = <T extends { test_name: string; file_path: string }>(item: T): T => new Proxy(item, {
+      get(target, key, receiver) {
+        if (key === 'test_name' || key === 'file_path') identityReads += 1;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    const identities = Array.from({ length: count }, (_, index) => ({ test_name: `test_shared_${index % 5}`, file_path: `tests/${index}.py` }));
+    const data = adaptAnalysis({ ...emptyResult,
+      detection: { ...emptyResult.detection, flaky_tests: identities.map(identity => track({ ...identity, flake_rate: .2, total_runs: 10, pass_count: 8, fail_count: 2, recent_failures: [] })) },
+      classifications: identities.map(identity => track({ ...classification(identity.file_path), ...identity, reasoning: `Diagnosis for ${identity.file_path}` })).reverse(),
+      fixes: identities.map(identity => track({ ...proposedFix(identity.file_path), ...identity })).reverse(),
+      quarantine_list: identities.map(identity => track(quarantineEntry(identity.file_path, identity.test_name))),
+    });
+    expect(data.tests.map(test => ({ id: test.id, reasoning: test.reasoning, quarantine: test.quarantine, diff: test.diff, passCount: test.passCount }))).toEqual(identities.map(identity => ({
+      id: `${identity.file_path}::${identity.test_name}`, reasoning: `Diagnosis for ${identity.file_path}`, quarantine: `Suppressed in ${identity.file_path}`, diff: '-shared\n+isolated', passCount: 8,
+    })));
+    // Deterministic work budget, not a wall-clock assertion that flakes on slow CI.
+    expect(identityReads).toBeLessThanOrEqual(count * 50);
   });
   it('joins same-name tests by file, preserves real evidence and does not fabricate run order', () => {
     const data = adaptAnalysis({ ...emptyResult,

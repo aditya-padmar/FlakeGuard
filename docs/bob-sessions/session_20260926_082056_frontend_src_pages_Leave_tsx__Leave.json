@@ -1,0 +1,84 @@
+{
+  "session_id": "ce084f35-f33a-4187-a0c4-eaa0dce155d2",
+  "timestamp": "2026-09-26T08:20:56.264701+00:00",
+  "test_name": "frontend\\src\\pages\\Leave.tsx::Leave",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\uploads\\upload_b82f6615\\DayFlow-hackathon-project-main\\frontend\\src\\pages\\Leave.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 138: Found network_call pattern: '{requests.map(req => ('; Line 167: Found network_call pattern: '{requests.length === 0 && ('; Line 213: Found network_call pattern: 'const displayedRequests = requests.filter(r => activeTab === 'All' || r.status === 'Pending');'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 138: Found network_call pattern: '{requests.map(req => ('",
+      "source": "source_code",
+      "snippet": "{requests.map(req => (",
+      "line_number": 138
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 167: Found network_call pattern: '{requests.length === 0 && ('",
+      "source": "source_code",
+      "snippet": "{requests.length === 0 && (",
+      "line_number": 167
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 213: Found network_call pattern: 'const displayedRequests = requests.filter(r => activeTab === 'All' || r.status === 'Pending');'",
+      "source": "source_code",
+      "snippet": "const displayedRequests = requests.filter(r => activeTab === 'All' || r.status === 'Pending');",
+      "line_number": 213
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 236: Found network_call pattern: '{displayedRequests.map(req => ('",
+      "source": "source_code",
+      "snippet": "{displayedRequests.map(req => (",
+      "line_number": 236
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 310: Found network_call pattern: '{displayedRequests.length === 0 && ('",
+      "source": "source_code",
+      "snippet": "{displayedRequests.length === 0 && (",
+      "line_number": 310
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 312: Found network_call pattern: 'No {activeTab.toLowerCase()} leave requests.'",
+      "source": "source_code",
+      "snippet": "No {activeTab.toLowerCase()} leave requests.",
+      "line_number": 312
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 138: Found network_call pattern: '{requests.map(req => ('",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 167: Found network_call pattern: '{requests.length === 0 && ('",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 213: Found network_call pattern: 'const displayedRequests = requests.filter(r => activeTab === 'All' || r.status ==",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React, { useState, useEffect } from 'react';\nimport { useAuth } from '../context/AuthContext';\nimport { db } from '../lib/db';\nimport { LeaveRequest, LeaveType, User } from '../types';\nimport { generateId } from '../lib/utils';\nimport { format } from 'date-fns';\nimport { CalendarOff, CheckCircle2, XCircle } from 'lucide-react';\n\nexport default function LeavePage() {\n const { user } = useAuth();\n\n if (user?.role === 'HR') {\n return <AdminLeave />;\n }\n\n return <EmployeeLeave />;\n}\n\nfunction"
+}

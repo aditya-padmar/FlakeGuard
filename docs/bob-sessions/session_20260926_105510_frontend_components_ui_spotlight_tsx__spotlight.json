@@ -1,0 +1,35 @@
+{
+  "session_id": "d0efd80e-98a6-43b7-bd0b-cccb365fdc21",
+  "timestamp": "2026-09-26T10:55:10.033267+00:00",
+  "test_name": "frontend\\components\\ui\\spotlight.tsx::spotlight",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\frontend\\components\\ui\\spotlight.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.65
+  },
+  "reasoning": "Environment/network dependency detected (65%): Line 16: Found network_call pattern: 'xmlns=\"http://www.w3.org/2000/svg\"'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 16: Found network_call pattern: 'xmlns=\"http://www.w3.org/2000/svg\"'",
+      "source": "source_code",
+      "snippet": "xmlns=\"http://www.w3.org/2000/svg\"",
+      "line_number": 16
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 16: Found network_call pattern: 'xmlns=\"http://www.w3.org/2000/svg\"'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React from \"react\";\nimport { cn } from \"../../lib/utils\";\n\ntype SpotlightProps = {\n  className?: string;\n  fill?: string;\n};\n\nexport const Spotlight = ({ className, fill }: SpotlightProps) => {\n  return (\n    <svg\n      className={cn(\n        \"animate-spotlight pointer-events-none absolute z-[1] h-[169%] w-[138%] lg:w-[84%] opacity-0\",\n        className\n      )}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 3787 2842\"\n      fill=\"none\"\n    >\n      <g filter=\"url(#filter)\">\n "
+}

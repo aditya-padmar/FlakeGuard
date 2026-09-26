@@ -4,9 +4,9 @@ import logging
 import os
 from pathlib import Path
 import random
-import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Dict, List, Optional
 import uuid
@@ -83,8 +83,17 @@ def normalize_pytest_target(raw: str, repo_root: Path) -> str:
 class TestRunner:
     """Executes tests with controlled ordering, environment chaos, jitter, and parallelism."""
 
-    def __init__(self, repo_path: str | Path):
+    def __init__(
+        self,
+        repo_path: str | Path,
+        collection_timeout: float = 30.0,
+        run_timeout: float = 60.0,
+    ):
         self.repo_path = Path(repo_path).resolve()
+        if collection_timeout <= 0 or run_timeout <= 0:
+            raise ValueError("Test timeouts must be positive")
+        self.collection_timeout = collection_timeout
+        self.run_timeout = run_timeout
         self._collected_test_ids: Optional[List[str]] = None
         self._pytest_plugins_verified = False
         self._json_report_available = False
@@ -173,6 +182,9 @@ class TestRunner:
                                     *only when running FlakeGuard's own suite*)
         """
         env = os.environ.copy()
+        # Collection and execution must share controlled options. Inherited
+        # retry/addopts settings otherwise hide failures or multiply work.
+        env.pop("PYTEST_ADDOPTS", None)
         parts: List[str] = [str(self.repo_path)]
         if self._is_flakeguard_repo:
             parts.append(str(_FLAKEGUARD_ROOT))
@@ -229,6 +241,7 @@ class TestRunner:
             # preventing it from walking up and finding FlakeGuard's pytest.ini.
             f"--rootdir={self.repo_path}",
             "--collect-only", "-q",
+            "-p", "no:cacheprovider",
             # Clear any inherited addopts that might add unknown flags
             "-o", "addopts=",
         ]
@@ -244,21 +257,25 @@ class TestRunner:
             self.repo_path, self.repo_path, " ".join(cmd),
         )
 
-        res = subprocess.run(
-            cmd,
-            cwd=str(self.repo_path),
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-
-        # exit code 5 = no tests collected (no test files matched pytest discovery rules)
-        if res.returncode == 5:
-            logger.warning("No tests collected from %s (exit 5)", self.repo_path)
-            raise RuntimeError(
-                "No tests were collected (exit code: 5). "
-                "The repository contains no files matching test_*.py or *_test.py."
+        try:
+            res = subprocess.run(
+                cmd,
+                cwd=str(self.repo_path),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=self.collection_timeout,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError(f"Test collection exceeded {self.collection_timeout:g} seconds") from exc
+
+        # A clean no-tests result is different from a broken collection. Never
+        # accept partial IDs when imports or pytest configuration failed.
+        if res.returncode == 5:
+            self._collected_test_ids = []
+            return []
+        if res.returncode != 0:
+            raise RuntimeError(f"Test collection failed (exit code: {res.returncode})")
 
         raw_ids: List[str] = []
         for line in res.stdout.splitlines():
@@ -266,8 +283,8 @@ class TestRunner:
             if not stripped or stripped.startswith("="):
                 continue
             if "::" in stripped:
-                # Take only the first token (node ID) — ignore trailing counts
-                raw_ids.append(stripped.split()[0])
+                # Parameter IDs may contain spaces; preserve the whole node ID.
+                raw_ids.append(stripped)
 
         # Fallback: pytest printed tree format (<Module>, <Class>, <Function>)
         if not raw_ids:
@@ -353,35 +370,40 @@ class TestRunner:
             )
 
         run_id = str(uuid.uuid4())
-
-        # 1. Reset per-run state directory
-        state_dir_env = os.environ.get("FLAKEGUARD_STATE_DIR")
-        state_dir = (
-            Path(state_dir_env).resolve()
-            if state_dir_env
-            else (self.repo_path / ".flakeguard_state").resolve()
-        )
-        if state_dir.exists():
-            shutil.rmtree(state_dir, ignore_errors=True)
-        state_dir.mkdir(parents=True, exist_ok=True)
-
-        for pycache in self.repo_path.glob("**/__pycache__"):
-            if pycache.is_dir():
-                shutil.rmtree(pycache, ignore_errors=True)
-
-        # 2. Collect + optionally filter test IDs
-        # collect_test_ids() raises RuntimeError if zero tests are found,
-        # so all_node_ids is always non-empty here.
-        all_node_ids = list(self.collect_test_ids())
-
+        node_ids = list(self.collect_test_ids())
         if test_pattern:
-            all_node_ids = [nid for nid in all_node_ids if test_pattern in nid]
-
-        node_ids = list(all_node_ids)
+            node_ids = [node for node in node_ids if test_pattern in node]
+        if not node_ids:
+            # Running pytest with no node arguments would execute the entire
+            # suite again, including when the requested filter matched nothing.
+            return TestRun(
+                run_id=run_id, repository=str(self.repo_path),
+                branch="unknown", commit_sha="unknown", executions=[],
+                ordering=[], ordering_seed=ordering_seed, returncode=5,
+            )
         if ordering_seed is not None:
-            rng = random.Random(ordering_seed)
-            rng.shuffle(node_ids)
+            random.Random(ordering_seed).shuffle(node_ids)
 
+        # Own only a unique temporary child. Never delete caller state, source
+        # caches, virtualenv caches, or another concurrent run's working files.
+        state_parent_env = os.environ.get("FLAKEGUARD_STATE_DIR")
+        state_parent = Path(state_parent_env).resolve() if state_parent_env else None
+        if state_parent is not None:
+            state_parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="flakeguard-", dir=state_parent) as temporary:
+            state_dir = Path(temporary) / "state"
+            state_dir.mkdir()
+            report_file = Path(temporary) / f".temp_results_{run_id}.json"
+            return self._execute_collected_tests(
+                run_id, node_ids, state_dir, report_file,
+                run_index, ordering_seed, jitter_ms, env_chaos, parallel,
+            )
+
+    def _execute_collected_tests(
+        self, run_id: str, node_ids: List[str], state_dir: Path, report_file: Path,
+        run_index: int, ordering_seed: Optional[int], jitter_ms: int,
+        env_chaos: Optional[Dict[str, str]], parallel: bool,
+    ) -> TestRun:
         # 3. Build child environment
         child_env = self._build_execution_env(
             run_index=run_index,
@@ -404,7 +426,6 @@ class TestRunner:
                 actual_parallel = False
 
         # 6. Build pytest command
-        report_file = self.repo_path / f".temp_results_{run_id}.json"
         cmd = [
             sys.executable, "-m", "pytest",
             # Anchor rootdir to the target repo — prevents FlakeGuard's
@@ -415,6 +436,7 @@ class TestRunner:
             "-v",
             "--json-report",
             f"--json-report-file={report_file}",
+            "-o", "addopts=",
         ]
 
         if self._is_flakeguard_repo:
@@ -432,13 +454,17 @@ class TestRunner:
         )
 
         start_time = time.perf_counter()
-        res = subprocess.run(
-            cmd,
-            cwd=str(self.repo_path),
-            env=child_env,
-            capture_output=True,
-            text=True,
-        )
+        try:
+            res = subprocess.run(
+                cmd,
+                cwd=str(self.repo_path),
+                env=child_env,
+                capture_output=True,
+                text=True,
+                timeout=self.run_timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise TimeoutError(f"Test run exceeded {self.run_timeout:g} seconds") from exc
         duration_seconds = time.perf_counter() - start_time
 
         logger.info(
@@ -592,6 +618,7 @@ class TestRunner:
                 cwd=str(self.repo_path),
                 capture_output=True,
                 text=True,
+                timeout=5,
             )
             return res.stdout.strip() or "main"
         except Exception:
@@ -604,6 +631,7 @@ class TestRunner:
                 cwd=str(self.repo_path),
                 capture_output=True,
                 text=True,
+                timeout=5,
             )
             return res.stdout.strip() or "unknown"
         except Exception:

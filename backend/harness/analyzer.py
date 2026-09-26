@@ -71,9 +71,6 @@ class TestAnalyzer:
             fail_count = sum(1 for _, e in valid_pairs if e.status == TestStatus.FAILED)
             unweighted_n = pass_count + fail_count
 
-            # 1. Unweighted p
-            p_unweighted = (pass_count / unweighted_n) if unweighted_n > 0 else 0.0
-
             # 4. RECENCY WEIGHTING
             # weight execution i by w = 0.5 ** ((N - 1 - i) / 3)
             # Recompute p from weighted pass/fail totals, then compute score from weighted p
@@ -100,14 +97,15 @@ class TestAnalyzer:
                 )
             flakiness_score = round(100.0 * weighted_entropy, 2)
 
-            # 5. GATE (false-positive mitigation)
-            # Flag the test only if pass_count >= 3 AND fail_count >= 3
-            if pass_count >= 3 and fail_count >= 3:
-                # 6. Confidence: Wilson score 95% lower bound on minority outcome rate
+            # Observing both outcomes establishes flakiness after at least two
+            # executions. Sample size affects confidence, not the observed label.
+            if pass_count > 0 and fail_count > 0:
+                # Confidence: Wilson score 95% lower bound on minority outcome rate.
+                # This remains conservative when only a few executions are available.
                 k = min(pass_count, fail_count)
                 confidence = self._wilson_lower_bound(k, unweighted_n)
 
-                # 7. first_flagged_run: earliest run where test accumulated 3 passes and 3 failures
+                # first_flagged_run: earliest observation with both a pass and a failure
                 first_flagged_run = self._compute_first_flagged_run(pairs)
 
                 # 8. EVIDENCE
@@ -141,8 +139,11 @@ class TestAnalyzer:
                 )
                 flaky_tests.append(flaky_test)
             else:
-                # Reject test
-                if fail_count == 0 and pass_count > 0:
+                # No mixed pass/fail evidence. "Stable" means observed passing,
+                # not proof that further planned executions can be skipped.
+                if unweighted_n == 0:
+                    reason = "no_pass_fail_evidence"
+                elif fail_count == 0:
                     reason = "always_passed"
                     stable_tests.append(test_name)
                 else:
@@ -159,11 +160,12 @@ class TestAnalyzer:
         flaky_tests.sort(key=lambda t: (t.flakiness_score, t.confidence), reverse=True)
         stable_tests.sort()
 
-        # Mean detection confidence across flaky tests (or 1.0 if clean/no flakes)
+        # Mean confidence in detected flakes, not confidence that a suite is clean.
+        # No detected flakes (including no usable observations) provides no such evidence.
         if flaky_tests:
             mean_conf = round(sum(t.confidence for t in flaky_tests) / len(flaky_tests), 4)
         else:
-            mean_conf = 1.0
+            mean_conf = 0.0
 
         all_run_timestamps = [r.timestamp for r in runs]
         start_time = min(all_run_timestamps)
@@ -199,7 +201,7 @@ class TestAnalyzer:
 
     @staticmethod
     def _compute_first_flagged_run(pairs: List[tuple[TestRun, TestExecution]]) -> Optional[int]:
-        """Compute 1-based index of earliest run with at least 3 passes and 3 failures."""
+        """Compute 1-based observation index where both outcomes were first seen."""
         cum_p = 0
         cum_f = 0
         for run_idx, (_, execution) in enumerate(pairs, start=1):
@@ -207,7 +209,7 @@ class TestAnalyzer:
                 cum_p += 1
             elif execution.status == TestStatus.FAILED:
                 cum_f += 1
-            if cum_p >= 3 and cum_f >= 3:
+            if cum_p > 0 and cum_f > 0:
                 return run_idx
         return None
 

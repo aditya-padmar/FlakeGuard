@@ -27,7 +27,7 @@ async def main():
     parser.add_argument("--repo", default="sample-repo", help="Path to repository to analyze")
     parser.add_argument("--runs", type=int, default=10, help="Number of test runs (default: 10)")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed for ordering and chaos (default: 42)")
-    parser.add_argument("--batch-size", type=int, default=3, help="Batch size for early stopping (default: 3)")
+    parser.add_argument("--batch-size", type=int, default=3, help="Compatibility batch setting; all requested runs execute (default: 3)")
     parser.add_argument("--json", dest="json_output", default=None, help="Optional output JSON path")
     parser.add_argument("--pattern", default=None, help="Optional pytest pattern filter (-k)")
 
@@ -82,7 +82,7 @@ async def main():
             short_name = t.test_name if len(t.test_name) <= 50 else "..." + t.test_name[-47:]
             print(f"{short_name:<50} {t.flakiness_score:>7.2f} {t.confidence:>7.4f} {pf_str:>11} {flagged_str:>12}")
     else:
-        print("\nNo tests met the flaky threshold (>=3 passes AND >=3 failures).")
+        print("\nNo tests showed both a passing and failing outcome in the requested runs.")
 
     # Rejected tests table
     if detection.rejected_tests:

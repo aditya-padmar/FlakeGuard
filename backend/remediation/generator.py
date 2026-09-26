@@ -126,7 +126,9 @@ class FixGenerator:
                 confidence=0.90,
                 template="timing_await",
                 strategy=REMEDIATION_STRATEGIES["timing_race"],
-                diff=self._make_diff(diff, classification.file_path),
+                diff=self._make_diff(
+                    diff, classification.file_path, old_content=source, new_content=new_source
+                ),
             ))
 
         # 2. Relax tight elapsed-time assertions
@@ -146,7 +148,9 @@ class FixGenerator:
                 confidence=0.80,
                 template="timing_assertion",
                 strategy=REMEDIATION_STRATEGIES["timing_race"],
-                diff=self._make_diff(diff, classification.file_path),
+                diff=self._make_diff(
+                    diff, classification.file_path, old_content=source, new_content=new_source
+                ),
             ))
 
         # 3. Generic retry wrapper (always offered)
@@ -235,7 +239,9 @@ class FixGenerator:
             confidence=0.88,
             template="ordering_isolation",
             strategy=REMEDIATION_STRATEGIES["ordering"],
-            diff=self._make_diff(diff, classification.file_path),
+            diff=self._make_diff(
+                diff, classification.file_path, old_content=source, new_content=new_source
+            ),
         ))
 
         # 2. Add explicit teardown
@@ -306,7 +312,9 @@ class FixGenerator:
                 confidence=0.92,
                 template="leakage_fresh_instance",
                 strategy=REMEDIATION_STRATEGIES["state_leakage"],
-                diff=self._make_diff(diff, classification.file_path),
+                diff=self._make_diff(
+                    diff, classification.file_path, old_content=source, new_content=new_source
+                ),
             ))
 
         # 2. Wrap test body in try/finally to guarantee cleanup
@@ -318,7 +326,9 @@ class FixGenerator:
             confidence=0.85,
             template="leakage_cleanup",
             strategy=REMEDIATION_STRATEGIES["state_leakage"],
-            diff=self._make_diff(diff, classification.file_path),
+            diff=self._make_diff(
+                diff, classification.file_path, old_content=source, new_content=new_source
+            ),
         ))
 
         return suggestions
@@ -386,7 +396,9 @@ class FixGenerator:
                 confidence=0.95,
                 template="environment_seed",
                 strategy=REMEDIATION_STRATEGIES["environment"],
-                diff=self._make_diff(diff, classification.file_path),
+                diff=self._make_diff(
+                    diff, classification.file_path, old_content=source, new_content=new_source
+                ),
             ))
 
         # 2. Mock external calls
@@ -398,7 +410,9 @@ class FixGenerator:
             confidence=0.88,
             template="environment_mock",
             strategy=REMEDIATION_STRATEGIES["environment"],
-            diff=self._make_diff(diff, classification.file_path),
+            diff=self._make_diff(
+                diff, classification.file_path, old_content=source, new_content=new_source
+            ),
         ))
 
         # 3. Skip gracefully when resource is unavailable
@@ -456,7 +470,9 @@ class FixGenerator:
             confidence=0.50,
             template="generic_quarantine",
             strategy="quarantine",
-            diff=self._make_diff(diff, classification.file_path) if diff else None,
+            diff=self._make_diff(
+                diff, classification.file_path, old_content=source, new_content=new_source
+            ) if diff else None,
         )
 
     def _add_quarantine_marker(
@@ -482,12 +498,21 @@ class FixGenerator:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _make_diff(self, diff_text: str, file_path: str) -> Optional[CodeDiff]:
-        """Wrap a raw unified diff string in a CodeDiff model."""
+    def _make_diff(
+        self,
+        diff_text: str,
+        file_path: str,
+        *,
+        old_content: str,
+        new_content: str,
+    ) -> Optional[CodeDiff]:
+        """Keep complete file contents alongside the reviewable unified diff."""
         if not diff_text:
             return None
         return CodeDiff(
             file_path=file_path,
+            old_content=old_content,
+            new_content=new_content,
             unified_diff=diff_text,
         )
 

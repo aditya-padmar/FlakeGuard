@@ -1,0 +1,56 @@
+{
+  "session_id": "d32eeed4-6cb4-4376-9909-7b936c508101",
+  "timestamp": "2026-09-26T10:42:37.953830+00:00",
+  "test_name": "frontend\\src\\lib\\payslipExporter.ts::payslipExporter",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_2157f425\\frontend\\src\\lib\\payslipExporter.ts",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 1.0,
+    "ordering": 0.6,
+    "state_leakage": 0.5,
+    "environment": 0.25
+  },
+  "reasoning": "High probability of timing flakiness (100%): Line 34: Found sleep pattern: 'setTimeout(() => {'; Line 255: Found sleep pattern: 'setTimeout(() => {'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 34: Found sleep pattern: 'setTimeout(() => {'",
+      "source": "source_code",
+      "snippet": "setTimeout(() => {",
+      "line_number": 34
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 255: Found sleep pattern: 'setTimeout(() => {'",
+      "source": "source_code",
+      "snippet": "setTimeout(() => {",
+      "line_number": 255
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 34: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 255: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (7/10 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import jsPDF from 'jspdf';\nimport * as XLSX from 'xlsx';\nimport { CustomPayslipData } from './payrollUtils';\n\n/**\n * Format currency helper\n */\nconst fmt = (num: number) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n/**\n * Download Payslip as PDF using Server Endpoint + Client Vector PDF + Blob Anchor fallback\n */\nexport async function downloadPayslipPDF(data: CustomPayslipData): Promise<void> {\n  const fileName = `Dayflow_Payslip_${data.user.id}_${data"
+}

@@ -220,9 +220,9 @@ async def validate_fix(fix_id: str, suggestion_id: str, runs: int = 5, repo_path
 
     Workflow:
     1. Retrieve the fix and the requested suggestion.
-    2. Extract the patched source from the suggestion's diff.
-    3. Temporarily write the patched file, run the test ``runs`` times.
-    4. Restore the original file unconditionally.
+    2. Require full patched source; unified diff text is never executable source.
+    3. Check Python syntax, then run the test in a disposable repository copy.
+    4. Leave the original repository untouched.
     5. Return a ValidationResult with ``fix_valid`` and ``flakiness_rate``.
 
     The fix is only promoted to VERIFIED status if ``fix_valid`` is true.
@@ -243,8 +243,8 @@ async def validate_fix(fix_id: str, suggestion_id: str, runs: int = 5, repo_path
             detail="This suggestion has no diff to validate.",
         )
 
-    patched_source = _patched_sources.get(f"{fix_id}:{suggestion_id}")
-    if not patched_source:
+    patched_source = suggestion.diff.new_content
+    if not isinstance(patched_source, str):
         raise HTTPException(
             status_code=422,
             detail="Patched source not available for this suggestion. Re-generate the fix.",
@@ -312,19 +312,18 @@ async def reject_fix(fix_id: str, reason: str):
 # ── Private helpers ───────────────────────────────────────────────────────────
 
 def _store_patched_sources(fix: Fix) -> None:
-    """
-    Reconstruct the patched source for each suggestion that carries a diff
-    so the validator can access it later without re-generating.
+    """Cache full source only; a display patch cannot reconstruct a file.
 
-    We store the new_content when available; otherwise fall back to the diff
-    itself (the validator can still parse it, but new_content is more direct).
+    Missing source clears stale entries. Empty full source remains distinct
+    from missing source, and is left for the validator's target checks.
     """
     for suggestion in fix.suggestions:
-        if suggestion.diff is None:
-            continue
-        # If DiffGenerator stored new_content use it; otherwise keep the diff text
-        patched = suggestion.diff.new_content or suggestion.diff.unified_diff
-        _patched_sources[f"{fix.fix_id}:{suggestion.suggestion_id}"] = patched
+        key = f"{fix.fix_id}:{suggestion.suggestion_id}"
+        patched = suggestion.diff.new_content if suggestion.diff is not None else None
+        if isinstance(patched, str):
+            _patched_sources[key] = patched
+        else:
+            _patched_sources.pop(key, None)
 
 
 # ── F3 Evidence & Strategy Endpoints ─────────────────────────────────────────

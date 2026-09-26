@@ -1,0 +1,42 @@
+{
+  "session_id": "a6d3c41f-bab0-4aec-9223-c3a6b7553be4",
+  "timestamp": "2026-09-26T08:09:54.728454+00:00",
+  "test_name": "TestEnvironmentIssues::test_region_dependent_totals",
+  "file_path": "sample-repo/tests/test_environment.py",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.8
+  },
+  "reasoning": "Environment/network dependency detected (80%): Line 3: Found env_variable pattern: 'region = os.environ.get(\"SALES_REGION\", \"US\")'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 3: Found env_variable pattern: 'region = os.environ.get(\"SALES_REGION\", \"US\")'",
+      "source": "source_code",
+      "snippet": "region = os.environ.get(\"SALES_REGION\", \"US\")",
+      "line_number": 3
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates environmental/external dependency: 'env'",
+      "source": "test_name",
+      "snippet": "TestEnvironmentIssues::test_region_dependent_totals",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'environment'",
+      "source": "error_message",
+      "snippet": "AssertionError: Suspected cause: environment dependency. Observed SALES_REGION='EU'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_region_dependent_totals(self):\n        \"\"\"Calculates totals depending on SALES_REGION environment variable.\"\"\"\n        region = os.environ.get(\"SALES_REGION\", \"US\")\n        totals = {\"US\": 100, \"EU\": 200}\n        val = totals.get(region)\n        assert val == 100, (\n            f\"Suspected cause: environment dependency. Observed SALES_REGION={region!r} \"\n            f\"yielding total {val} (expected 100).\"\n        )"
+}

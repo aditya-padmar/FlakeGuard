@@ -1,0 +1,35 @@
+{
+  "session_id": "a37a01f0-db6e-4ca9-a41d-6a91839bbacd",
+  "timestamp": "2026-09-26T08:20:31.727717+00:00",
+  "test_name": "frontend\\src\\pages\\Landing.tsx::Landing",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_1e808f7e\\frontend\\src\\pages\\Landing.tsx",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "medium",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.4,
+    "ordering": 0.0,
+    "state_leakage": 0.25,
+    "environment": 0.0
+  },
+  "reasoning": "Timing flakiness detected based on execution logs and test characteristics (40%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 12: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/10 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React, { useState } from \"react\";\nimport { Link } from \"react-router-dom\";\nimport { useAuth } from \"../context/AuthContext\";\nimport {\n  LogIn,\n  UserPlus,\n  ArrowRight,\n  Clock,\n  CalendarOff,\n  Wallet,\n  Users,\n  ShieldCheck,\n  Sparkles,\n  TrendingUp,\n  CheckCircle2,\n  Building2,\n  Zap,\n  BarChart3,\n  UserCheck,\n  ChevronRight,\n} from \"lucide-react\";\nimport KineticGrid from \"../components/ui/kinetic-grid\";\n\nexport default function Landing() {\n  const { user } = useAuth();\n  const [active"
+}

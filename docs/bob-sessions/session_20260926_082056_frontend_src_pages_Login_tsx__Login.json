@@ -1,0 +1,49 @@
+{
+  "session_id": "b862dbd8-8e64-4b07-a3ee-a615bf1be52f",
+  "timestamp": "2026-09-26T08:20:56.266018+00:00",
+  "test_name": "frontend\\src\\pages\\Login.tsx::Login",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\uploads\\upload_b82f6615\\DayFlow-hackathon-project-main\\frontend\\src\\pages\\Login.tsx",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 0.9,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 0.0
+  },
+  "reasoning": "Timing flakiness detected based on execution logs and test characteristics (90%).",
+  "evidence": [
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 25: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 38: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error message contains timing indicator: 'timeout'",
+      "source": "error_message",
+      "snippet": "Line 48: Found sleep pattern: 'setTimeout(() => {'",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (4/5 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React, { useState } from 'react';\nimport { useNavigate, Link } from 'react-router-dom';\nimport { useAuth } from '../context/AuthContext';\nimport { LogIn } from 'lucide-react';\n\nexport default function Login() {\n const [email, setEmail] = useState('');\n const [password, setPassword] = useState('');\n const [error, setError] = useState('');\n const [isLoading, setIsLoading] = useState(false);\n \n const { login } = useAuth();\n const navigate = useNavigate();\n\n const handleSubmit = async (e: Rea"
+}
