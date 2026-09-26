@@ -1,0 +1,63 @@
+{
+  "session_id": "605e8b10-8f6e-4672-ab9f-9e8bd2902417",
+  "timestamp": "2026-09-26T07:28:16.527344+00:00",
+  "test_name": "MPU6050_CLEAN\\main\\main.c::led_off",
+  "file_path": "D:\\FlakeGuard\\data\\uploads\\upload_265b1f0d\\GPIO-TEST-master\\MPU6050_CLEAN\\main\\main.c",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "high",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 1.0,
+    "state_leakage": 0.2,
+    "environment": 1.0
+  },
+  "reasoning": "Order dependency detected (100%): Line 1: Found shared_state pattern: 'static void led_off(void)'; Line 9: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'; Line 10: Found shared_state pattern: 'static i2c_master_dev_handle_t dev_handle = NULL;'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found shared_state pattern: 'static void led_off(void)'",
+      "source": "source_code",
+      "snippet": "static void led_off(void)",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 9: Found shared_state pattern: 'static i2c_master_bus_handle_t bus_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "static i2c_master_bus_handle_t bus_handle = NULL;",
+      "line_number": 9
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 10: Found shared_state pattern: 'static i2c_master_dev_handle_t dev_handle = NULL;'",
+      "source": "source_code",
+      "snippet": "static i2c_master_dev_handle_t dev_handle = NULL;",
+      "line_number": 10
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 12: Found shared_state pattern: 'static bool i2c_master_init(void)'",
+      "source": "source_code",
+      "snippet": "static bool i2c_master_init(void)",
+      "line_number": 12
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 34: Found shared_state pattern: 'static bool i2c_add_device(uint16_t addr, uint32_t speed)'",
+      "source": "source_code",
+      "snippet": "static bool i2c_add_device(uint16_t addr, uint32_t speed)",
+      "line_number": 34
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 53: Found shared_state pattern: 'static void i2c_scan(void)'",
+      "source": "source_code",
+      "snippet": "static void i2c_scan(void)",
+      "line_number": 53
+    }
+  ],
+  "test_source_snippet": "static void led_off(void)\n{\n    gpio_set_level(LED_GPIO, 0);\n}\n\n// ============================================================\n// I2C Master Driver (new driver, ESP-IDF v5.x)\n// ============================================================\nstatic i2c_master_bus_handle_t bus_handle = NULL;\nstatic i2c_master_dev_handle_t dev_handle = NULL;\n\nstatic bool i2c_master_init(void)\n{\n    i2c_master_bus_config_t bus_config = {\n        .clk_source = I2C_CLK_SRC_DEFAULT,\n        .i2c_port = I2C_PORT,\n       "
+}
