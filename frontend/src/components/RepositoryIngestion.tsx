@@ -1,6 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { repositoryApi, PipelineAnalysisResult } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { repositoryApi, type PipelineAnalysisResult } from '../services/api';
 import './RepositoryIngestion.css';
+
+interface AnalysisRequest {
+  generation: number;
+  controller: AbortController;
+  timers: Set<ReturnType<typeof setTimeout>>;
+}
+
+function clearRequestTimers(request: AnalysisRequest) {
+  request.timers.forEach(timer => clearTimeout(timer));
+  request.timers.clear();
+}
+
+function analysisError(cause: unknown, fallback: string): string {
+  const detail = axios.isAxiosError<{ detail?: unknown }>(cause) ? cause.response?.data?.detail : undefined;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  return cause instanceof Error && cause.message ? cause.message : fallback;
+}
 
 interface RepositoryIngestionProps {
   onAnalysisComplete: (result: PipelineAnalysisResult) => void;
@@ -47,46 +65,87 @@ export default function RepositoryIngestion({
     time: string;
   } | null>(null);
 
-  // Load preset sources on mount
+  const mounted = useRef(false);
+  const generation = useRef(0);
+  const activeRequest = useRef<AnalysisRequest | null>(null);
+
+  // The per-setup signal also rejects responses from StrictMode's discarded mount.
   useEffect(() => {
-    repositoryApi.getSources()
+    mounted.current = true;
+    const sourceController = new AbortController();
+    repositoryApi.getSources(sourceController.signal)
       .then(res => {
-        if (res.data?.sources) {
+        if (!sourceController.signal.aborted && res.data?.sources) {
           setAvailableSources(res.data.sources);
         }
       })
       .catch(() => {});
+    return () => {
+      mounted.current = false;
+      generation.current += 1;
+      sourceController.abort();
+      const request = activeRequest.current;
+      if (request) { request.controller.abort(); clearRequestTimers(request); }
+      activeRequest.current = null;
+    };
   }, []);
+
+  const isCurrentRequest = (request: AnalysisRequest) => mounted.current
+    && generation.current === request.generation
+    && activeRequest.current === request
+    && !request.controller.signal.aborted;
+  const beginRequest = () => {
+    // A ref closes the gap before React paints the disabled submit button.
+    if (!mounted.current || activeRequest.current) return null;
+    const request: AnalysisRequest = { generation: ++generation.current, controller: new AbortController(), timers: new Set() };
+    activeRequest.current = request;
+    return request;
+  };
+  const scheduleProgress = (request: AnalysisRequest, delay: number, update: () => void) => {
+    const timer = setTimeout(() => {
+      request.timers.delete(timer);
+      if (isCurrentRequest(request)) update();
+    }, delay);
+    request.timers.add(timer);
+  };
+  const finishRequest = (request: AnalysisRequest) => {
+    clearRequestTimers(request);
+    if (isCurrentRequest(request)) {
+      activeRequest.current = null;
+      setLoading(false);
+    }
+  };
 
   const handleGitHubAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeRequest.current) return;
     if (!repoUrl.trim()) {
       setErrorMessage('Please enter a valid GitHub repository URL.');
       return;
     }
+    const request = beginRequest();
+    if (!request) return;
 
-    // Clear ALL previous results before starting a new analysis
+    // Clear previous feedback before starting a new analysis.
     setLoading(true);
     setErrorMessage(null);
     setSuccessInfo(null);
     setCurrentStep(1);
     setStatusMessage(`Cloning ${repoUrl} (branch: ${branch || 'default'})...`);
 
-    // Simulated progress transitions to reflect real agent pipeline stages
-    const t1 = setTimeout(() => {
+    // Simulated progress transitions; callbacks belong only to this request.
+    scheduleProgress(request, 2500, () => {
       setCurrentStep(2);
       setStatusMessage(`Running ${numRuns} test detection iterations (F1)...`);
-    }, 2500);
-
-    const t2 = setTimeout(() => {
+    });
+    scheduleProgress(request, 5500, () => {
       setCurrentStep(3);
       setStatusMessage('Classifying root causes with Bob Agent 4 parallel subagents (F2)...');
-    }, 5500);
-
-    const t3 = setTimeout(() => {
+    });
+    scheduleProgress(request, 8500, () => {
       setCurrentStep(4);
       setStatusMessage('Generating concrete code diffs and remediation templates (F3)...');
-    }, 8500);
+    });
 
     try {
       const response = await repositoryApi.cloneAndAnalyze({
@@ -95,17 +154,13 @@ export default function RepositoryIngestion({
         token: token.trim() || undefined,
         num_runs: numRuns,
         test_pattern: testPattern.trim() || undefined
-      });
-
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      }, request.controller.signal);
+      if (!isCurrentRequest(request)) return;
+      clearRequestTimers(request);
 
       const data = response.data;
       const flakyCount = data.detection?.flaky_tests_count ?? 0;
       const fixesCount = data.fixes?.length ?? 0;
-
-      // Handle non-success responses without crashing
       if (data.status === 'no_tests' || data.status === 'unsupported') {
         const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
         setCurrentStep(0);
@@ -113,7 +168,6 @@ export default function RepositoryIngestion({
         setErrorMessage(`No Tests Found: ${reason}`);
         return;
       }
-
       if (data.status === 'error') {
         const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
         setCurrentStep(0);
@@ -121,68 +175,57 @@ export default function RepositoryIngestion({
         setErrorMessage(`GitHub Analysis Failed: ${reason}`);
         return;
       }
-
       setCurrentStep(5);
       setStatusMessage('Pipeline complete!');
-      setSuccessInfo({
-        source: repoUrl,
-        flakyCount,
-        fixesCount,
-        time: new Date().toLocaleTimeString()
-      });
+      setSuccessInfo({ source: repoUrl, flakyCount, fixesCount, time: new Date().toLocaleTimeString() });
       onAnalysisComplete(data);
-    } catch (err: any) {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      const detail = err.response?.data?.detail || err.message || 'Analysis failed';
+    } catch (cause: unknown) {
+      if (!isCurrentRequest(request) || axios.isCancel(cause)) return;
       setCurrentStep(0);
       setSuccessInfo(null);
-      setErrorMessage(`GitHub Analysis Failed: ${detail}`);
+      setErrorMessage(`GitHub Analysis Failed: ${analysisError(cause, 'Analysis failed')}`);
     } finally {
-      setLoading(false);
+      finishRequest(request);
     }
   };
 
   const handleUploadAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeRequest.current) return;
     if (!selectedFile) {
       setErrorMessage('Please select or drop a .zip archive or .py test file.');
       return;
     }
+    const request = beginRequest();
+    if (!request) return;
 
     setLoading(true);
     setErrorMessage(null);
     setSuccessInfo(null);
     setCurrentStep(1);
     setStatusMessage(`Unpacking and sandboxing ${selectedFile.name}...`);
-
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('num_runs', numRuns.toString());
-    if (testPattern.trim()) {
-      formData.append('test_pattern', testPattern.trim());
-    }
+    if (testPattern.trim()) formData.append('test_pattern', testPattern.trim());
 
-    const t1 = setTimeout(() => {
+    scheduleProgress(request, 1500, () => {
       setCurrentStep(2);
       setStatusMessage(`Executing test runs on uploaded files (${numRuns} iterations)...`);
-    }, 1500);
-
-    const t2 = setTimeout(() => {
+    });
+    scheduleProgress(request, 3500, () => {
       setCurrentStep(3);
       setStatusMessage('Orchestrating Bob root-cause subagents (Timing, Ordering, State, Env)...');
-    }, 3500);
+    });
 
     try {
-      const response = await repositoryApi.uploadAndAnalyze(formData);
-      clearTimeout(t1);
-      clearTimeout(t2);
+      const response = await repositoryApi.uploadAndAnalyze(formData, request.controller.signal);
+      if (!isCurrentRequest(request)) return;
+      clearRequestTimers(request);
 
       const data = response.data;
       const flakyCount = data.detection?.flaky_tests_count ?? 0;
       const fixesCount = data.fixes?.length ?? 0;
-
       if (data.status === 'no_tests' || data.status === 'unsupported') {
         const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
         setCurrentStep(0);
@@ -190,7 +233,6 @@ export default function RepositoryIngestion({
         setErrorMessage(`No Tests Found: ${reason}`);
         return;
       }
-
       if (data.status === 'error') {
         const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
         setCurrentStep(0);
@@ -198,31 +240,24 @@ export default function RepositoryIngestion({
         setErrorMessage(`Upload Analysis Failed: ${reason}`);
         return;
       }
-
       setCurrentStep(5);
       setStatusMessage('Analysis complete!');
-      setSuccessInfo({
-        source: selectedFile.name,
-        flakyCount,
-        fixesCount,
-        time: new Date().toLocaleTimeString()
-      });
+      setSuccessInfo({ source: selectedFile.name, flakyCount, fixesCount, time: new Date().toLocaleTimeString() });
       onAnalysisComplete(data);
-    } catch (err: any) {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      const detail = err.response?.data?.detail || err.message || 'Upload analysis failed';
+    } catch (cause: unknown) {
+      if (!isCurrentRequest(request) || axios.isCancel(cause)) return;
       setCurrentStep(0);
       setSuccessInfo(null);
-      setErrorMessage(`Upload Analysis Failed: ${detail}`);
+      setErrorMessage(`Upload Analysis Failed: ${analysisError(cause, 'Upload analysis failed')}`);
     } finally {
-      setLoading(false);
+      finishRequest(request);
     }
   };
 
   const handleLocalAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Clear ALL previous results before starting a new analysis
+    const request = beginRequest();
+    if (!request) return;
     setLoading(true);
     setErrorMessage(null);
     setSuccessInfo(null);
@@ -234,12 +269,12 @@ export default function RepositoryIngestion({
         repo_path: localPath,
         num_runs: numRuns,
         test_pattern: testPattern.trim() || undefined
-      });
+      }, request.controller.signal);
+      if (!isCurrentRequest(request)) return;
 
       const data = response.data;
       const flakyCount = data.detection?.flaky_tests_count ?? 0;
       const fixesCount = data.fixes?.length ?? 0;
-
       if (data.status === 'no_tests' || data.status === 'unsupported') {
         const reason = data.errors?.[0]?.message || data.message || 'No supported pytest tests were found.';
         setCurrentStep(0);
@@ -247,7 +282,6 @@ export default function RepositoryIngestion({
         setErrorMessage(`No Tests Found: ${reason}`);
         return;
       }
-
       if (data.status === 'error') {
         const reason = data.errors?.[0]?.message || data.message || 'Analysis failed.';
         setCurrentStep(0);
@@ -255,23 +289,17 @@ export default function RepositoryIngestion({
         setErrorMessage(`Local Analysis Failed: ${reason}`);
         return;
       }
-
       setCurrentStep(5);
       setStatusMessage('Local analysis complete!');
-      setSuccessInfo({
-        source: localPath,
-        flakyCount,
-        fixesCount,
-        time: new Date().toLocaleTimeString()
-      });
+      setSuccessInfo({ source: localPath, flakyCount, fixesCount, time: new Date().toLocaleTimeString() });
       onAnalysisComplete(data);
-    } catch (err: any) {
-      const detail = err.response?.data?.detail || err.message || 'Local analysis failed';
+    } catch (cause: unknown) {
+      if (!isCurrentRequest(request) || axios.isCancel(cause)) return;
       setCurrentStep(0);
       setSuccessInfo(null);
-      setErrorMessage(`Local Analysis Failed: ${detail}`);
+      setErrorMessage(`Local Analysis Failed: ${analysisError(cause, 'Local analysis failed')}`);
     } finally {
-      setLoading(false);
+      finishRequest(request);
     }
   };
 

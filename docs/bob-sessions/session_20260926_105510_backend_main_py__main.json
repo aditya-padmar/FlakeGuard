@@ -1,0 +1,77 @@
+{
+  "session_id": "7d5b816b-1d6b-4093-a022-ec61f9d0e580",
+  "timestamp": "2026-09-26T10:55:10.022297+00:00",
+  "test_name": "backend\\main.py::main",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\backend\\main.py",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "high",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.35,
+    "ordering": 0.6,
+    "state_leakage": 1.0,
+    "environment": 0.25
+  },
+  "reasoning": "State leakage detected (100%): Line 11: Found global_mutation pattern: 'app = FastAPI()'; Line 21: Found global_mutation pattern: '# Global game state (in production, use proper session management)'; Line 22: Found global_mutation pattern: 'game_state = MetaBoard()'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 11: Found global_mutation pattern: 'app = FastAPI()'",
+      "source": "source_code",
+      "snippet": "app = FastAPI()",
+      "line_number": 11
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 21: Found global_mutation pattern: '# Global game state (in production, use proper session management)'",
+      "source": "source_code",
+      "snippet": "# Global game state (in production, use proper session management)",
+      "line_number": 21
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 22: Found global_mutation pattern: 'game_state = MetaBoard()'",
+      "source": "source_code",
+      "snippet": "game_state = MetaBoard()",
+      "line_number": 22
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 23: Found global_mutation pattern: 'score_history = ScoreHistory()'",
+      "source": "source_code",
+      "snippet": "score_history = ScoreHistory()",
+      "line_number": 23
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 51: Found state_mutation pattern: 'boards.append([cell.value for cell in board.cells])'",
+      "source": "source_code",
+      "snippet": "boards.append([cell.value for cell in board.cells])",
+      "line_number": 51
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 52: Found state_mutation pattern: 'board_winners.append(board.winner.value)'",
+      "source": "source_code",
+      "snippet": "board_winners.append(board.winner.value)",
+      "line_number": 52
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 74: Found global_mutation pattern: 'global game_state'",
+      "source": "source_code",
+      "snippet": "global game_state",
+      "line_number": 74
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 82: Found global_mutation pattern: 'global game_state'",
+      "source": "source_code",
+      "snippet": "global game_state",
+      "line_number": 82
+    }
+  ],
+  "test_source_snippet": "from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom pydantic import BaseModel\nfrom typing import Optional, List, Tuple\nimport time\nimport uuid\nfrom game_engine import MetaBoard, Player\nfrom ai import get_ai_move, Difficulty\nfrom score_history import ScoreHistory, GameResult, GameMode\n\napp = FastAPI()\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\"*\"],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n# Global game state"
+}

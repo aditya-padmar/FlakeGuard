@@ -1,9 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import { repositoryApi, type PipelineAnalysisResult } from '../services/api';
 import { adaptAnalysis, createDemoData, parseGithubUrl, type WorkspaceData } from './data';
 
-interface ProcessState { mode: 'demo' | 'live'; repository: string; step: number; elapsed: number }
+interface ProcessState { mode: 'demo' | 'live'; repository: string; step: number; startedAt: number }
 interface WorkspaceContextValue {
   data: WorkspaceData;
   process: ProcessState | null;
@@ -36,15 +36,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     cancel();
     setError(null);
     const started = Date.now();
-    setProcess({ mode: 'demo', repository: 'acme / commerce-api', step: 0, elapsed: 0 });
+    setProcess({ mode: 'demo', repository: 'acme / commerce-api', step: 0, startedAt: started });
     timer.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - started) / 1000);
+      const elapsed = (Date.now() - started) / 1000;
       if (elapsed >= 15) {
         clearTimer();
         setData(createDemoData());
         setProcess(null);
-      } else setProcess({ mode: 'demo', repository: 'acme / commerce-api', step: Math.min(5, Math.floor(elapsed / 2.5)), elapsed });
-    }, 500);
+      } else {
+        const step = Math.min(5, Math.floor(elapsed / 2.5));
+        setProcess(previous => previous && previous.step !== step ? { ...previous, step } : previous);
+      }
+    }, 2500);
   }, [cancel, clearTimer]);
 
   const startLive = useCallback(async (url: string, branch: string) => {
@@ -54,20 +57,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const currentGeneration = generation.current;
     const requestController = new AbortController();
     controller.current = requestController;
-    setError(null);
     const started = Date.now();
-    setProcess({ mode: 'live', repository: normalized.replace('https://github.com/', ''), step: 0, elapsed: 0 });
-    timer.current = setInterval(() => setProcess(previous => previous ? { ...previous, elapsed: Math.floor((Date.now() - started) / 1000) } : null), 1000);
+    setProcess({ mode: 'live', repository: normalized.replace('https://github.com/', ''), step: 0, startedAt: started });
     try {
       const response = await repositoryApi.cloneAndAnalyze({ repo_url: normalized, branch: branch.trim() || 'main', num_runs: 10 }, requestController.signal);
       if (generation.current !== currentGeneration) return;
       const result = response.data;
+      if (result.status === 'unsupported') {
+        setError(result.errors?.[0]?.message || result.message || 'This repository’s test framework is not supported by the configured runner.');
+        return;
+      }
       if (result.status === 'no_tests') {
         const backendMsg = result.errors?.[0]?.message || result.message || '';
-        const baseMsg = 'No pytest-compatible tests were found in this repository.';
-        // Append backend hint (e.g. import error) if it adds information beyond the base
-        const extra = backendMsg && !backendMsg.toLowerCase().startsWith('no pytest') ? ` ${backendMsg}` : '';
-        setError(`${baseMsg}${extra} FlakeGuard requires a Python project with test files named test_*.py or *_test.py.`);
+        // Backend message already contains the base description; only append if
+        // it includes an extra hint (e.g. ImportError detail from pytest stderr)
+        const hasHint = backendMsg.toLowerCase().includes('hint:') || backendMsg.toLowerCase().includes('modulenotfounderror') || backendMsg.toLowerCase().includes('importerror');
+        const msg = hasHint
+          ? backendMsg
+          : 'No pytest-compatible tests were found in this repository. FlakeGuard requires a Python project with test files named test_*.py or *_test.py.';
+        setError(msg);
         return;
       }
       if (result.status === 'error') {
@@ -77,6 +85,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setError(`Analysis failed: ${safe}`);
         return;
       }
+      // Ensure the user gets to see the complete investigation pipeline before transitioning to results
+      const isTestEnv = typeof window !== 'undefined' && (import.meta as unknown as { env?: { MODE?: string } })?.env?.MODE === 'test';
+      if (!isTestEnv) {
+        const elapsedMs = Date.now() - started;
+        const minDurationMs = 13500;
+        if (elapsedMs < minDurationMs) {
+          await new Promise(resolve => setTimeout(resolve, minDurationMs - elapsedMs));
+        }
+      }
+      if (generation.current !== currentGeneration) return;
       setData(adaptAnalysis(result));
     } catch (cause) {
       if (generation.current !== currentGeneration || axios.isCancel(cause)) return;
@@ -96,7 +114,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setData(previous => previous.mode !== 'demo' ? previous : { ...previous, tests: previous.tests.map(test => test.id === id && test.diff ? { ...test, fixStatus: 'validated' } : test) });
   }, []);
   const setAnalysis = useCallback((result: PipelineAnalysisResult) => { cancel(); setError(null); setData(adaptAnalysis(result)); }, [cancel]);
-  return <WorkspaceContext.Provider value={{ data, process, error, startDemo, startLive, cancel, validateDemo, setAnalysis }}>{children}</WorkspaceContext.Provider>;
+  const value = useMemo(() => ({ data, process, error, startDemo, startLive, cancel, validateDemo, setAnalysis }), [data, process, error, startDemo, startLive, cancel, validateDemo, setAnalysis]);
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 
 export function useWorkspace() {

@@ -1,0 +1,42 @@
+{
+  "session_id": "1af25d52-8b76-449b-982c-59cd8bc169c1",
+  "timestamp": "2026-09-26T10:55:10.027820+00:00",
+  "test_name": "frontend\\components\\Game.tsx::Game",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\frontend\\components\\Game.tsx",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "medium",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.55,
+    "ordering": 0.0,
+    "state_leakage": 0.6,
+    "environment": 0.0
+  },
+  "reasoning": "State leakage detected (60%): Line 122: Found state_mutation pattern: 'if (!isWon && !isFull) activeBoards.add(idx);'; Line 131: Found state_mutation pattern: 'activeBoards.add(targetIdx);'; Line 136: Found state_mutation pattern: 'if (!isWon && !isFull) activeBoards.add(idx);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 122: Found state_mutation pattern: 'if (!isWon && !isFull) activeBoards.add(idx);'",
+      "source": "source_code",
+      "snippet": "if (!isWon && !isFull) activeBoards.add(idx);",
+      "line_number": 122
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 131: Found state_mutation pattern: 'activeBoards.add(targetIdx);'",
+      "source": "source_code",
+      "snippet": "activeBoards.add(targetIdx);",
+      "line_number": 131
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 136: Found state_mutation pattern: 'if (!isWon && !isFull) activeBoards.add(idx);'",
+      "source": "source_code",
+      "snippet": "if (!isWon && !isFull) activeBoards.add(idx);",
+      "line_number": 136
+    }
+  ],
+  "test_source_snippet": "import React, { useState, useEffect, useCallback, useRef } from 'react';\nimport { Player, GameConfig, Move } from '../types';\nimport { MiniBoard } from './MiniBoard';\nimport { RefreshCwIcon, XIcon, OIcon, HomeIcon, HistoryIcon } from './Icons';\nimport { playMoveSound, playGameWinSound } from '../logic/sound';\nimport { fetchGameState, makeMove, getAIMove, resetGameAPI, saveGameResult } from '../services/api';\n\ninterface GameProps {\n  config: GameConfig;\n  onHome: () => void;\n  onViewHistory: () ="
+}

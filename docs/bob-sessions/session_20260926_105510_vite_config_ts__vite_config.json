@@ -1,0 +1,56 @@
+{
+  "session_id": "b9499025-0d1a-4ddc-9a82-78169188755d",
+  "timestamp": "2026-09-26T10:55:10.039245+00:00",
+  "test_name": "vite.config.ts::vite.config",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\vite.config.ts",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 8: Found network_call pattern: 'const apiProxyTarget = env.VITE_API_URL || 'https://ultimate-tic-tac-toe-8fp1.onrender.com';'; Line 24: Found env_variable pattern: ''process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),'; Line 25: Found env_variable pattern: ''process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 8: Found network_call pattern: 'const apiProxyTarget = env.VITE_API_URL || 'https://ultimate-tic-tac-toe-8fp1.onrender.com';'",
+      "source": "source_code",
+      "snippet": "const apiProxyTarget = env.VITE_API_URL || 'https://ultimate-tic-tac-toe-8fp1.onrender.com';",
+      "line_number": 8
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 24: Found env_variable pattern: ''process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),'",
+      "source": "source_code",
+      "snippet": "'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),",
+      "line_number": 24
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 25: Found env_variable pattern: ''process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)'",
+      "source": "source_code",
+      "snippet": "'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)",
+      "line_number": 25
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 4: Found network_call pattern: '// https://vitejs.dev/config/'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 23: Found network_call pattern: 'target: 'http://localhost:8000','",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import path from 'path';\nimport { defineConfig, loadEnv } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig(({ mode }) => {\n    const frontendRoot = path.resolve(__dirname, 'frontend');\n    const env = loadEnv(mode, frontendRoot, '');\n    const apiProxyTarget = env.VITE_API_URL || 'https://ultimate-tic-tac-toe-8fp1.onrender.com';\n    return {\n      envDir: frontendRoot,\n      server: {\n        port: 3000,\n        host: '0.0.0.0',\n        proxy: {\n          '/api"
+}

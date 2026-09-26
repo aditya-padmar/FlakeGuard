@@ -1,0 +1,42 @@
+{
+  "session_id": "8c4ec07a-a560-4a08-957d-9cd9fa05e1b5",
+  "timestamp": "2026-09-26T10:55:10.025983+00:00",
+  "test_name": "frontend\\components\\DifficultySelection.tsx::DifficultySelection",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\frontend\\components\\DifficultySelection.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 87: Found network_call pattern: 'scene=\"https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode\"'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 87: Found network_call pattern: 'scene=\"https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode\"'",
+      "source": "source_code",
+      "snippet": "scene=\"https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode\"",
+      "line_number": 87
+    },
+    {
+      "type": "missing_pattern",
+      "description": "Pseudorandom generator used without explicit deterministic seed",
+      "source": "source_code",
+      "snippet": null,
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 87: Found network_call pattern: 'scene=\"https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode\"'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React from 'react';\nimport { Difficulty } from '../types';\nimport { ArrowLeftIcon, BrainIcon } from './Icons';\nimport { Card } from './ui/card';\nimport { Spotlight } from './ui/spotlight';\nimport { SplineScene } from './ui/splite';\n\ninterface DifficultySelectionProps {\n  onSelectDifficulty: (difficulty: Difficulty) => void;\n  onBack: () => void;\n}\n\nexport const DifficultySelection: React.FC<DifficultySelectionProps> = ({ onSelectDifficulty, onBack }) => {\n  return (\n    <div className=\"w-"
+}

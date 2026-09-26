@@ -46,6 +46,11 @@ export default function AmbientBackground() {
 
   return <div className="fg-ambient" aria-hidden="true">
     <div className="fg-ambient-dots" />
+    <div className="fg-ambient-grid-plane" />
+    <svg className="fg-ambient-contours" viewBox="0 0 1440 1000" preserveAspectRatio="xMidYMid slice" fill="none">
+      <defs><linearGradient id="fg-contour-gradient" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#00f0ff" stopOpacity=".24" /><stop offset="1" stopColor="#8a3ffc" stopOpacity=".02" /></linearGradient></defs>
+      {[0, 1, 2, 3, 4, 5].map(index => <path key={index} d={`M ${960 + index * 46} -80 C ${700 + index * 50} 220, ${1440 + index * 35} 300, ${1160 + index * 46} 640 S ${980 + index * 46} 860, ${1470 + index * 40} 1140`} stroke="url(#fg-contour-gradient)" strokeWidth="1" />)}
+    </svg>
     <div className="fg-ambient-orb fg-ambient-cyan" />
     <div className="fg-ambient-orb fg-ambient-violet" />
     <div className="fg-ambient-orb fg-ambient-emerald" />

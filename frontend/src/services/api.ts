@@ -223,6 +223,9 @@ export const metricsApi = {
 // ── Repository Ingestion API (GitHub Clone & Local File Upload) ───────────────
 
 export interface PipelineAnalysisResult {
+  status?: string;
+  errors?: Array<{ code: string; message: string }>;
+  message?: string;
   pipeline_id: string;
   source_type: 'github' | 'upload' | 'local';
   repository: string;
@@ -268,14 +271,15 @@ export interface PipelineAnalysisResult {
       } | null;
     }>;
   }>;
-  quarantine_audit?: {
+  // Successful runs with no flaky tests currently return an empty audit object.
+  quarantine_audit?: Partial<{
     report_id: string;
     total_quarantined: number;
     diagnosed_count: number;
     fixable_count: number;
     unexplained_count: number;
     tests: AuditedTest[];
-  };
+  }> | null;
   quarantine_list?: QuarantineEntry[];
   root_causes_chart?: Array<{ root_cause: string; count: number; percentage: number }>;
   metrics?: {
@@ -310,16 +314,17 @@ export const repositoryApi = {
     test_pattern?: string;
   }, signal?: AbortSignal) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/clone-and-analyze`, data, { signal }),
 
-  uploadAndAnalyze: (formData: FormData) =>
+  uploadAndAnalyze: (formData: FormData, signal?: AbortSignal) =>
     axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      signal,
     }),
 
   analyzeLocal: (data: {
     repo_path: string;
     num_runs?: number;
     test_pattern?: string;
-  }) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/analyze-local`, data),
+  }, signal?: AbortSignal) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/analyze-local`, data, { signal }),
 
   createPR: (data: {
     repo_url: string;
@@ -332,7 +337,7 @@ export const repositoryApi = {
     base_branch?: string;
   }) => axios.post(`${API_BASE}/repository/create-pr`, data),
 
-  getSources: () => axios.get(`${API_BASE}/repository/sources`),
+  getSources: (signal?: AbortSignal) => axios.get(`${API_BASE}/repository/sources`, { signal }),
   getLatest: () => axios.get<PipelineAnalysisResult>(`${API_BASE}/repository/latest`),
 };
 

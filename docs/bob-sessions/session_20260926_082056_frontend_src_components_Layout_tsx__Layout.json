@@ -1,0 +1,42 @@
+{
+  "session_id": "7c484a35-8011-45bc-b491-1e1e2b53ee1e",
+  "timestamp": "2026-09-26T08:20:56.261242+00:00",
+  "test_name": "frontend\\src\\components\\Layout.tsx::Layout",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\uploads\\upload_b82f6615\\DayFlow-hackathon-project-main\\frontend\\src\\components\\Layout.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.6,
+    "environment": 0.75
+  },
+  "reasoning": "Environment/network dependency detected (75%): Line 41: Found file_system pattern: 'onClick={() => setMobileMenuOpen(false)}'; Line 70: Found file_system pattern: 'onClick={() => setMobileMenuOpen(false)}'; Line 113: Found file_system pattern: 'onClick={() => setMobileMenuOpen(true)}'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 41: Found file_system pattern: 'onClick={() => setMobileMenuOpen(false)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(false)}",
+      "line_number": 41
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 70: Found file_system pattern: 'onClick={() => setMobileMenuOpen(false)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(false)}",
+      "line_number": 70
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 113: Found file_system pattern: 'onClick={() => setMobileMenuOpen(true)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(true)}",
+      "line_number": 113
+    }
+  ],
+  "test_source_snippet": "import React from 'react';\nimport { Outlet, NavLink, useNavigate } from 'react-router-dom';\nimport { useAuth } from '../context/AuthContext';\nimport { \n LayoutDashboard, \n UserCircle, \n Clock, \n CalendarOff, \n Wallet, \n LogOut,\n Menu,\n X\n} from 'lucide-react';\nimport { cn } from '../lib/utils';\n\nexport default function Layout() {\n const { user, logout } = useAuth();\n const navigate = useNavigate();\n const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);\n\n const handleLogout = () => {"
+}

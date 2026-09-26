@@ -18,7 +18,7 @@ export default {
         radar: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, currentColor 360deg)',
         glass: 'linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02))',
       },
-      backgroundSize: { dots: '24px 24px', grid: '48px 48px' },
+      backgroundSize: { dots: '24px 24px', grid: '48px 48px', 'shine-size': '300% 300%' },
       boxShadow: {
         signal: '0 0 30px -5px rgba(0,240,255,.15)',
         'signal-strong': '0 0 25px rgba(0,240,255,.25)',
@@ -50,6 +50,11 @@ export default {
           to: { transform: 'translate3d(50px,35px,0) scale(1.08)' },
         },
         scanline: { from: { transform: 'translateY(-100%)' }, to: { transform: 'translateY(100%)' } },
+        shine: {
+          '0%': { 'background-position': '0% 0%' },
+          '50%': { 'background-position': '100% 100%' },
+          to: { 'background-position': '0% 0%' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.5s ease-in-out infinite',
@@ -58,6 +63,7 @@ export default {
         'ring-pulse': 'ring-pulse 3s ease-out infinite',
         'ambient-drift': 'ambient-drift 24s ease-in-out infinite alternate',
         scanline: 'scanline 8s linear infinite',
+        shine: 'shine var(--duration) infinite linear',
       },
     },
   },

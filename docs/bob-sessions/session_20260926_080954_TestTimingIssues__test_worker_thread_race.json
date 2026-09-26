@@ -1,0 +1,49 @@
+{
+  "session_id": "618d3eea-353d-461e-a04c-aaaf97400d0e",
+  "timestamp": "2026-09-26T08:09:54.716352+00:00",
+  "test_name": "TestTimingIssues::test_worker_thread_race",
+  "file_path": "sample-repo/tests/test_timing.py",
+  "verdict": {
+    "root_cause": "timing",
+    "confidence": "high",
+    "suggested_fix_area": "Test timing, sleeps, and timeout assertions"
+  },
+  "subagent_scores": {
+    "timing": 1.0,
+    "ordering": 0.0,
+    "state_leakage": 0.4,
+    "environment": 0.6
+  },
+  "reasoning": "High probability of timing flakiness (100%): Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'; Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 7: Found sleep pattern: 'time.sleep(random.uniform(0.0, 0.06))'",
+      "source": "source_code",
+      "snippet": "time.sleep(random.uniform(0.0, 0.06))",
+      "line_number": 7
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 14: Found timeout pattern: 'done.wait(timeout=0.03)'",
+      "source": "source_code",
+      "snippet": "done.wait(timeout=0.03)",
+      "line_number": 14
+    },
+    {
+      "type": "naming_convention",
+      "description": "Test name indicates timing sensitivity: 'timing'",
+      "source": "test_name",
+      "snippet": "TestTimingIssues::test_worker_thread_race",
+      "line_number": null
+    },
+    {
+      "type": "execution_history",
+      "description": "Intermittent pass/fail variance observed (2/4 runs failed)",
+      "source": "status_history",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "    def test_worker_thread_race(self):\n        \"\"\"Worker thread race condition where wait timeout can expire before thread finishes.\"\"\"\n        results = []\n        done = threading.Event()\n\n        def worker():\n            time.sleep(random.uniform(0.0, 0.06))\n            results.append(\"ok\")\n            done.set()\n\n        t = threading.Thread(target=worker)\n        t.start()\n\n        done.wait(timeout=0.03)\n        # CRITICAL: Take snapshot before join\n        snapshot = list(results)\n      "
+}

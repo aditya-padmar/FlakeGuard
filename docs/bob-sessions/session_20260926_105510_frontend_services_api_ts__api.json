@@ -1,0 +1,105 @@
+{
+  "session_id": "9acc7224-8775-44d8-9774-aca9f9df11a7",
+  "timestamp": "2026-09-26T10:55:10.036141+00:00",
+  "test_name": "frontend\\services\\api.ts::api",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\frontend\\services\\api.ts",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 1: Found network_call pattern: 'const envApiUrl = import.meta.env.VITE_API_URL?.trim();'; Line 4: Found network_call pattern: ''https://ultimate-tic-tac-toe-8fp1.onrender.com';'; Line 12: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/state`);'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 1: Found network_call pattern: 'const envApiUrl = import.meta.env.VITE_API_URL?.trim();'",
+      "source": "source_code",
+      "snippet": "const envApiUrl = import.meta.env.VITE_API_URL?.trim();",
+      "line_number": 1
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 4: Found network_call pattern: ''https://ultimate-tic-tac-toe-8fp1.onrender.com';'",
+      "source": "source_code",
+      "snippet": "'https://ultimate-tic-tac-toe-8fp1.onrender.com';",
+      "line_number": 4
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 12: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/state`);'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/state`);",
+      "line_number": 12
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 17: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/move`, {'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/move`, {",
+      "line_number": 17
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 26: Found network_call pattern: 'const response = await fetch(`${API_BASE}/ai/move`, {'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/ai/move`, {",
+      "line_number": 26
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 35: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/history`, {'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/history`, {",
+      "line_number": 35
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 44: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/reset`, {'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/reset`, {",
+      "line_number": 44
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 51: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/history`);'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/history`);",
+      "line_number": 51
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 56: Found network_call pattern: 'const response = await fetch(`${API_BASE}/game/history`, {'",
+      "source": "source_code",
+      "snippet": "const response = await fetch(`${API_BASE}/game/history`, {",
+      "line_number": 56
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 167: Found network_call pattern: 'listRuns: () => axios.get(`${API_BASE}/detection/runs`),'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 168: Found network_call pattern: 'getRun: (runId: string) => axios.get(`${API_BASE}/detection/runs/${runId}`),'",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 169: Found network_call pattern: 'analyze: () => axios.post(`${API_BASE}/detection/analyze`),'",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "const envApiUrl = import.meta.env.VITE_API_URL?.trim();\nconst API_BASE =\n  envApiUrl?.replace(/\\/+$/, '') ||\n  'https://ultimate-tic-tac-toe-8fp1.onrender.com';\n\nexport interface GameConfig {\n    mode: string;\n    difficulty?: number;\n}\n\nexport const fetchGameState = async () => {\n    const response = await fetch(`${API_BASE}/game/state`);\n    return response.json();\n};\n\nexport const makeMove = async (boardIdx: number, cellIdx: number) => {\n    const response = await fetch(`${API_BASE}/game/move"
+}

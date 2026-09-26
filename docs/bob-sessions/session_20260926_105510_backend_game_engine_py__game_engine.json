@@ -1,0 +1,42 @@
+{
+  "session_id": "cfbf34c8-84d1-46fa-a97b-738157f4f0a7",
+  "timestamp": "2026-09-26T10:55:10.020782+00:00",
+  "test_name": "backend\\game_engine.py::game_engine",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\backend\\game_engine.py",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "medium",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.6,
+    "environment": 0.0
+  },
+  "reasoning": "State leakage detected (60%): Line 53: Found state_mutation pattern: 'moves.append((i, j))'; Line 60: Found state_mutation pattern: 'moves.append((self.next_meta, j))'; Line 67: Found state_mutation pattern: 'moves.append((i, j))'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 53: Found state_mutation pattern: 'moves.append((i, j))'",
+      "source": "source_code",
+      "snippet": "moves.append((i, j))",
+      "line_number": 53
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 60: Found state_mutation pattern: 'moves.append((self.next_meta, j))'",
+      "source": "source_code",
+      "snippet": "moves.append((self.next_meta, j))",
+      "line_number": 60
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 67: Found state_mutation pattern: 'moves.append((i, j))'",
+      "source": "source_code",
+      "snippet": "moves.append((i, j))",
+      "line_number": 67
+    }
+  ],
+  "test_source_snippet": "from enum import Enum\nfrom typing import List, Optional, Tuple, Set\nimport copy\n\nclass Player(Enum):\n    EMPTY = 0\n    X = 1\n    O = 2\n\nclass Board:\n    def __init__(self):\n        self.cells = [Player.EMPTY] * 9\n        self.winner = Player.EMPTY\n    \n    def is_full(self) -> bool:\n        return all(cell != Player.EMPTY for cell in self.cells)\n    \n    def check_winner(self) -> Player:\n        winning_lines = [\n            [0, 1, 2], [3, 4, 5], [6, 7, 8],  # rows\n            [0, 3, 6], [1, 4, "
+}

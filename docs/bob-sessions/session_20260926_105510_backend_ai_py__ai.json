@@ -1,0 +1,49 @@
+{
+  "session_id": "924cbe7f-bcb1-4805-8b7b-666689f3ab4b",
+  "timestamp": "2026-09-26T10:55:10.018527+00:00",
+  "test_name": "backend\\ai.py::ai",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\Ajay-B-Acharya_Ultimate-Tic-Tac-Toe_55eb1cda\\backend\\ai.py",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.2,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 20: Found random_value pattern: 'return random.choice(legal_moves)'; Line 36: Found random_value pattern: 'return random.choice(legal_moves)'; Line 50: Found random_value pattern: 'return random.choice(best_moves) if best_moves else random.choice(legal_moves)'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 20: Found random_value pattern: 'return random.choice(legal_moves)'",
+      "source": "source_code",
+      "snippet": "return random.choice(legal_moves)",
+      "line_number": 20
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 36: Found random_value pattern: 'return random.choice(legal_moves)'",
+      "source": "source_code",
+      "snippet": "return random.choice(legal_moves)",
+      "line_number": 36
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 50: Found random_value pattern: 'return random.choice(best_moves) if best_moves else random.choice(legal_moves)'",
+      "source": "source_code",
+      "snippet": "return random.choice(best_moves) if best_moves else random.choice(legal_moves)",
+      "line_number": 50
+    },
+    {
+      "type": "missing_pattern",
+      "description": "Pseudorandom generator used without explicit deterministic seed",
+      "source": "source_code",
+      "snippet": null,
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "from typing import Optional, Tuple\nfrom game_engine import MetaBoard, Player\nfrom enum import Enum\nimport random\n\nclass Difficulty(Enum):\n    EASY = 1\n    MEDIUM = 2\n    HARD = 3\n\ndef get_ai_move(game: MetaBoard, difficulty: Difficulty) -> Optional[Tuple[int, int]]:\n    legal_moves = game.legal_moves()\n    if not legal_moves:\n        return None\n        \n    ai_player = game.current_player\n    opp_player = Player.X if ai_player == Player.O else Player.O\n    \n    if difficulty == Difficulty.EASY:"
+}

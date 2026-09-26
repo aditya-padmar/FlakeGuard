@@ -1,0 +1,91 @@
+{
+  "session_id": "e432cbb8-3ed1-47db-8b21-05f54df72d2e",
+  "timestamp": "2026-09-26T10:48:36.770350+00:00",
+  "test_name": "frontend\\src\\pages\\Leave.tsx::Leave",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_5f36d412\\frontend\\src\\pages\\Leave.tsx",
+  "verdict": {
+    "root_cause": "environment",
+    "confidence": "high",
+    "suggested_fix_area": "Network mocking, deterministic RNG seeds, and environment variable defaults"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 0.0,
+    "environment": 1.0
+  },
+  "reasoning": "Environment/network dependency detected (100%): Line 220: Found network_call pattern: '{requests.map(req => ('; Line 254: Found network_call pattern: '{requests.length === 0 && ('; Line 300: Found network_call pattern: 'const pendingCount = requests.filter(r => r.status === 'Pending').length;'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 220: Found network_call pattern: '{requests.map(req => ('",
+      "source": "source_code",
+      "snippet": "{requests.map(req => (",
+      "line_number": 220
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 254: Found network_call pattern: '{requests.length === 0 && ('",
+      "source": "source_code",
+      "snippet": "{requests.length === 0 && (",
+      "line_number": 254
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 300: Found network_call pattern: 'const pendingCount = requests.filter(r => r.status === 'Pending').length;'",
+      "source": "source_code",
+      "snippet": "const pendingCount = requests.filter(r => r.status === 'Pending').length;",
+      "line_number": 300
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 301: Found network_call pattern: 'const displayedRequests = requests.filter(r => activeTab === 'All' || r.status === 'Pending');'",
+      "source": "source_code",
+      "snippet": "const displayedRequests = requests.filter(r => activeTab === 'All' || r.status === 'Pending');",
+      "line_number": 301
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 339: Found network_call pattern: 'All Requests ({requests.length})'",
+      "source": "source_code",
+      "snippet": "All Requests ({requests.length})",
+      "line_number": 339
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 345: Found network_call pattern: '{displayedRequests.map(req => ('",
+      "source": "source_code",
+      "snippet": "{displayedRequests.map(req => (",
+      "line_number": 345
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 420: Found network_call pattern: '{displayedRequests.length === 0 && ('",
+      "source": "source_code",
+      "snippet": "{displayedRequests.length === 0 && (",
+      "line_number": 420
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 138: Found network_call pattern: '{requests.map(req => ('",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 167: Found network_call pattern: '{requests.length === 0 && ('",
+      "line_number": null
+    },
+    {
+      "type": "error_pattern",
+      "description": "Error indicates environment/network failure: 'network'",
+      "source": "error_message",
+      "snippet": "Line 213: Found network_call pattern: 'const displayedRequests = requests.filter(r => activeTab === 'All' || r.status ==",
+      "line_number": null
+    }
+  ],
+  "test_source_snippet": "import React, { useState, useEffect } from 'react';\nimport { useAuth } from '../context/AuthContext';\nimport { db } from '../lib/db';\nimport { LeaveRequest, LeaveType, User } from '../types';\nimport { generateId } from '../lib/utils';\nimport { format, addDays } from 'date-fns';\nimport { CalendarOff, CheckCircle2, XCircle, Plus, Calendar, AlertCircle, Info } from 'lucide-react';\n\nexport default function LeavePage() {\n  const { user } = useAuth();\n\n  if (user?.role === 'HR') {\n    return <AdminLea"
+}

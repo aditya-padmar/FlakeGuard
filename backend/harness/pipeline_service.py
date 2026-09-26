@@ -1,4 +1,4 @@
-"""Core pipeline execution service for FlakeGuard (F1 -> F2 -> F3 -> F4)."""
+﻿"""Core pipeline execution service for FlakeGuard (F1 -> F2 -> F3 -> F4)."""
 import asyncio
 import json
 import logging
@@ -12,7 +12,7 @@ from backend.models.detection import FlakyTest, DetectionResult, TestStatus, Tes
 from backend.harness.git_service import GitService
 
 
-# ── Canonical empty detection / metrics blocks used when a run produces no data ──
+# ΓöÇΓöÇ Canonical empty detection / metrics blocks used when a run produces no data ΓöÇΓöÇ
 
 def _empty_detection(total_runs: int = 0) -> Dict[str, Any]:
     return {
@@ -314,7 +314,7 @@ class PipelineService:
             # classifications_data, and fixes_data all use the same file_path value.
             agent = BobAgent()
             test_sources: Dict[str, str] = {}
-            resolved_paths: Dict[str, str] = {}   # test_name → resolved file_path string
+            resolved_paths: Dict[str, str] = {}   # test_name ΓåÆ resolved file_path string
 
             for test in detection.flaky_tests:
                 target_file = find_test_file(repo_path, test.file_path)
@@ -382,7 +382,7 @@ class PipelineService:
             # Step 3: Remediation Generator & Diffs (F3)
             # Use the already-resolved test.file_path from the loop above.
             fix_generator = FixGenerator()
-            # Build a lookup from test_name → resolved source for F3
+            # Build a lookup from test_name ΓåÆ resolved source for F3
             for classification in classifications:
                 src = test_sources.get(classification.test_name, "")
                 if not src or src.startswith("# Source for"):

@@ -1,0 +1,56 @@
+{
+  "session_id": "ab0a63fd-e8ed-41bb-be35-455f007934a0",
+  "timestamp": "2026-09-26T10:48:36.753073+00:00",
+  "test_name": "frontend\\src\\components\\Layout.tsx::Layout",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_5f36d412\\frontend\\src\\components\\Layout.tsx",
+  "verdict": {
+    "root_cause": "state_leakage",
+    "confidence": "high",
+    "suggested_fix_area": "Fixture teardown, shared singleton cleanup, and global state reset"
+  },
+  "subagent_scores": {
+    "timing": 0.15,
+    "ordering": 0.0,
+    "state_leakage": 1.0,
+    "environment": 1.0
+  },
+  "reasoning": "State leakage detected (100%): Line 61: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'; Line 102: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'; Line 140: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 61: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(false)}",
+      "line_number": 61
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 102: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(false)}",
+      "line_number": 102
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 140: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(false)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(false)}",
+      "line_number": 140
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 198: Found resource_leak pattern: 'onClick={() => setMobileMenuOpen(true)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setMobileMenuOpen(true)}",
+      "line_number": 198
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 242: Found resource_leak pattern: 'onClick={() => setNotificationsOpen(!notificationsOpen)}'",
+      "source": "source_code",
+      "snippet": "onClick={() => setNotificationsOpen(!notificationsOpen)}",
+      "line_number": 242
+    }
+  ],
+  "test_source_snippet": "import React from 'react';\nimport { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';\nimport { useAuth } from '../context/AuthContext';\nimport { useTheme } from '../context/ThemeContext';\nimport { \n  LayoutDashboard, \n  UserCircle, \n  Clock, \n  CalendarOff, \n  Wallet, \n  LogOut,\n  Menu,\n  X,\n  Bell,\n  Search,\n  ChevronRight,\n  Sparkles,\n  Sun,\n  Moon\n} from 'lucide-react';\nimport { cn } from '../lib/utils';\nimport ConstellationGrid from './ui/constellation-grid';\n\nexport defau"
+}

@@ -1,0 +1,91 @@
+{
+  "session_id": "ee99e53f-ea03-43ea-8eab-176cce05fdda",
+  "timestamp": "2026-09-26T10:48:36.754895+00:00",
+  "test_name": "frontend\\src\\components\\ui\\constellation-grid.tsx::constellation-grid",
+  "file_path": "D:\\FlakeGuard-main\\FlakeGuard-main\\data\\repos\\aditya-padmar_DayFlow-hackathon-project_5f36d412\\frontend\\src\\components\\ui\\constellation-grid.tsx",
+  "verdict": {
+    "root_cause": "ordering",
+    "confidence": "high",
+    "suggested_fix_area": "Test execution order, state isolation, and fixtures"
+  },
+  "subagent_scores": {
+    "timing": 0.35,
+    "ordering": 1.0,
+    "state_leakage": 1.0,
+    "environment": 1.0
+  },
+  "reasoning": "Order dependency detected (100%): Line 30: Found shared_state pattern: 'const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');'; Line 62: Found shared_state pattern: 'const dpr = Math.min(window.devicePixelRatio || 1, 2);'; Line 63: Found shared_state pattern: 'width = window.innerWidth;'.",
+  "evidence": [
+    {
+      "type": "code_pattern",
+      "description": "Line 30: Found shared_state pattern: 'const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');'",
+      "source": "source_code",
+      "snippet": "const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');",
+      "line_number": 30
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 62: Found shared_state pattern: 'const dpr = Math.min(window.devicePixelRatio || 1, 2);'",
+      "source": "source_code",
+      "snippet": "const dpr = Math.min(window.devicePixelRatio || 1, 2);",
+      "line_number": 62
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 63: Found shared_state pattern: 'width = window.innerWidth;'",
+      "source": "source_code",
+      "snippet": "width = window.innerWidth;",
+      "line_number": 63
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 64: Found shared_state pattern: 'height = window.innerHeight;'",
+      "source": "source_code",
+      "snippet": "height = window.innerHeight;",
+      "line_number": 64
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 109: Found shared_state pattern: 'window.addEventListener('resize', handleResize);'",
+      "source": "source_code",
+      "snippet": "window.addEventListener('resize', handleResize);",
+      "line_number": 109
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 110: Found shared_state pattern: 'window.addEventListener('mousemove', handleMouseMove);'",
+      "source": "source_code",
+      "snippet": "window.addEventListener('mousemove', handleMouseMove);",
+      "line_number": 110
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 111: Found shared_state pattern: 'window.addEventListener('mouseleave', handleMouseLeave);'",
+      "source": "source_code",
+      "snippet": "window.addEventListener('mouseleave', handleMouseLeave);",
+      "line_number": 111
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 251: Found shared_state pattern: 'window.removeEventListener('resize', handleResize);'",
+      "source": "source_code",
+      "snippet": "window.removeEventListener('resize', handleResize);",
+      "line_number": 251
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 252: Found shared_state pattern: 'window.removeEventListener('mousemove', handleMouseMove);'",
+      "source": "source_code",
+      "snippet": "window.removeEventListener('mousemove', handleMouseMove);",
+      "line_number": 252
+    },
+    {
+      "type": "code_pattern",
+      "description": "Line 253: Found shared_state pattern: 'window.removeEventListener('mouseleave', handleMouseLeave);'",
+      "source": "source_code",
+      "snippet": "window.removeEventListener('mouseleave', handleMouseLeave);",
+      "line_number": 253
+    }
+  ],
+  "test_source_snippet": "'use client';\n\nimport React, { useEffect, useRef, useState } from 'react';\nimport { cn } from '../../lib/utils';\n\ninterface Node {\n  x: number;\n  y: number;\n  vx: number;\n  vy: number;\n  baseX: number;\n  baseY: number;\n  radius: number;\n  label: string;\n  pulse: number;\n}\n\nexport default function ConstellationGrid({\n  children,\n  className,\n}: {\n  children?: React.ReactNode;\n  className?: string;\n}) {\n  const canvasRef = useRef<HTMLCanvasElement | null>(null);\n  const [isDarkMode, setIsDarkMode]"
+}

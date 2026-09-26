@@ -31,10 +31,15 @@ class DiffGenerator:
             new_lines,
             fromfile=f"a/{file_path}",
             tofile=f"b/{file_path}",
-            lineterm=""
+            lineterm="\n"
         )
-        
-        return ''.join(diff)
+
+        # difflib leaves unterminated source lines as-is. Give every patch
+        # record its own line and preserve the missing final newline explicitly.
+        return ''.join(
+            line if line.endswith('\n') else line + '\n\\ No newline at end of file\n'
+            for line in diff
+        )
     
     def apply_fix(
         self,

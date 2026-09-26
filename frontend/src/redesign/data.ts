@@ -1,4 +1,4 @@
-import type { PipelineAnalysisResult } from '../services/api';
+import type { AuditedTest, PipelineAnalysisResult } from '../services/api';
 
 export type RootCause = 'Timing / race' | 'Order dependency' | 'Data leakage' | 'Environment' | 'Unclassified';
 export interface TestRecord {
@@ -61,7 +61,7 @@ export function confidencePercent(value: string | number | null | undefined): nu
 }
 
 export function adaptAnalysis(result: PipelineAnalysisResult): WorkspaceData {
-  type Audit = NonNullable<PipelineAnalysisResult['quarantine_audit']>['tests'][number];
+  const auditTests = result.quarantine_audit?.tests ?? [];
   const inventory = new Map<string, TestRecord>();
   const knownPaths = new Map<string, Set<string>>();
   const quarantinePaths = new Map<string, Set<string>>();
@@ -71,19 +71,31 @@ export function adaptAnalysis(result: PipelineAnalysisResult): WorkspaceData {
     matches.add(path);
     paths.set(name, matches);
   };
-  for (const item of [...result.detection.flaky_tests, ...result.classifications, ...result.fixes, ...(result.quarantine_list ?? [])]) {
-    addPath(knownPaths, item.test_name, item.file_path);
-  }
+  // Build each join once, retaining Array.find's first duplicate match. Nested
+  // maps keep path/name identities exact without delimiter collisions.
+  const indexFirst = <T extends { test_name: string; file_path: string }>(items: T[]) => {
+    const byPath = new Map<string, Map<string, T>>();
+    for (const item of items) {
+      addPath(knownPaths, item.test_name, item.file_path);
+      let byName = byPath.get(item.file_path);
+      if (!byName) { byName = new Map<string, T>(); byPath.set(item.file_path, byName); }
+      if (!byName.has(item.test_name)) byName.set(item.test_name, item);
+    }
+    return (name: string, path: string | null) => path === null ? undefined : byPath.get(path)?.get(name);
+  };
+  const findTest = indexFirst(result.detection.flaky_tests);
+  const findClassification = indexFirst(result.classifications);
+  const findFix = indexFirst(result.fixes);
+  const findQuarantine = indexFirst(result.quarantine_list ?? []);
   for (const item of result.quarantine_list ?? []) addPath(quarantinePaths, item.test_name, item.file_path);
 
-  const createRecord = (name: string, path: string | null, id: string, audit?: Audit): TestRecord => {
+  const createRecord = (name: string, path: string | null, id: string, audit?: AuditedTest): TestRecord => {
     // Never attach file-qualified evidence or patches to an ambiguous name-only audit.
-    const matches = (item: { test_name: string; file_path: string }) => path !== null && item.test_name === name && item.file_path === path;
-    const test = result.detection.flaky_tests.find(matches);
-    const classification = result.classifications.find(matches);
-    const fix = result.fixes.find(matches);
+    const test = findTest(name, path);
+    const classification = findClassification(name, path);
+    const fix = findFix(name, path);
     const suggestion = fix?.suggestions.find(item => item.diff?.unified_diff) ?? fix?.suggestions[0];
-    const quarantine = result.quarantine_list?.find(matches);
+    const quarantine = findQuarantine(name, path);
     return {
       id, name, path: path || 'Path not returned',
       cause: normalizeCause(classification?.root_cause ?? audit?.root_cause ?? ''),
@@ -107,7 +119,7 @@ export function adaptAnalysis(result: PipelineAnalysisResult): WorkspaceData {
     const id = `${item.file_path}::${item.test_name}`;
     if (!inventory.has(id)) inventory.set(id, createRecord(item.test_name, item.file_path, id));
   }
-  for (const [index, audit] of (result.quarantine_audit?.tests ?? []).entries()) {
+  for (const [index, audit] of auditTests.entries()) {
     // Prefer an explicit quarantine identity over an unrelated executed namesake.
     // Otherwise all known file-qualified records must agree on the path.
     const paths = quarantinePaths.get(audit.test_name) ?? knownPaths.get(audit.test_name);
@@ -121,7 +133,7 @@ export function adaptAnalysis(result: PipelineAnalysisResult): WorkspaceData {
     framework: 'pytest pipeline', totalTests: result.metrics?.total_tests ?? null, tests,
     analyzedAt: result.completed_at, auditedCount: result.quarantine_audit?.total_quarantined ?? result.quarantine_list?.length ?? 0,
     auditSources: [
-      { source: 'QUARANTINE.md', count: result.quarantine_audit?.tests.filter(test => /quarantine/i.test(test.source)).length ?? null },
+      { source: 'QUARANTINE.md', count: result.quarantine_audit?.tests ? auditTests.filter(test => /quarantine/i.test(test.source)).length : null },
       { source: '@pytest.mark.skip', count: null },
       { source: '@pytest.mark.xfail', count: null },
       { source: 'CI workflow retries', count: null },
