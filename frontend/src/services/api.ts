@@ -219,3 +219,120 @@ export const metricsApi = {
   getTrends: (days = 30) => axios.get(`${API_BASE}/metrics/trends?days=${days}`),
   getPerformance: () => axios.get(`${API_BASE}/metrics/performance`),
 };
+
+// ── Repository Ingestion API (GitHub Clone & Local File Upload) ───────────────
+
+export interface PipelineAnalysisResult {
+  pipeline_id: string;
+  source_type: 'github' | 'upload' | 'local';
+  repository: string;
+  branch: string;
+  commit_sha: string;
+  started_at: string;
+  completed_at: string;
+  runs: number;
+  detection: {
+    total_runs: number;
+    flaky_tests_count: number;
+    confidence: number;
+    flaky_tests: FlakyTest[];
+  };
+  classifications: Array<{
+    classification_id: string;
+    test_name: string;
+    file_path: string;
+    root_cause: string;
+    confidence: string;
+    evidence: string[];
+    reasoning: string;
+    suggested_fix_area: string;
+  }>;
+  fixes: Array<{
+    fix_id: string;
+    test_name: string;
+    file_path: string;
+    status: string;
+    suggestions: Array<{
+      suggestion_id: string;
+      fix_type: string;
+      description: string;
+      rationale: string;
+      confidence: number;
+      diff?: {
+        file_path: string;
+        old_content?: string;
+        new_content?: string;
+        unified_diff: string;
+        line_start?: number;
+        line_end?: number;
+      } | null;
+    }>;
+  }>;
+  quarantine_audit?: {
+    report_id: string;
+    total_quarantined: number;
+    diagnosed_count: number;
+    fixable_count: number;
+    unexplained_count: number;
+    tests: AuditedTest[];
+  };
+  quarantine_list?: QuarantineEntry[];
+  root_causes_chart?: Array<{ root_cause: string; count: number; percentage: number }>;
+  metrics?: {
+    total_tests: number;
+    flaky_tests: number;
+    flakiness_rate: number;
+    active_quarantined: number;
+    fixes_applied: number;
+    avg_resolution_time: number;
+  };
+  github_metadata?: {
+    owner: string;
+    repo: string;
+    clone_id: string;
+    test_files_count: number;
+    test_files: string[];
+  };
+  upload_metadata?: {
+    upload_id: string;
+    filename: string;
+    test_files_count: number;
+    test_files: string[];
+  };
+}
+
+export const repositoryApi = {
+  cloneAndAnalyze: (data: {
+    repo_url: string;
+    branch?: string;
+    token?: string;
+    num_runs?: number;
+    test_pattern?: string;
+  }) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/clone-and-analyze`, data),
+
+  uploadAndAnalyze: (formData: FormData) =>
+    axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+  analyzeLocal: (data: {
+    repo_path: string;
+    num_runs?: number;
+    test_pattern?: string;
+  }) => axios.post<PipelineAnalysisResult>(`${API_BASE}/repository/analyze-local`, data),
+
+  createPR: (data: {
+    repo_url: string;
+    token: string;
+    file_path: string;
+    new_content: string;
+    title?: string;
+    body: string;
+    branch_name?: string;
+    base_branch?: string;
+  }) => axios.post(`${API_BASE}/repository/create-pr`, data),
+
+  getSources: () => axios.get(`${API_BASE}/repository/sources`),
+  getLatest: () => axios.get<PipelineAnalysisResult>(`${API_BASE}/repository/latest`),
+};
+
