@@ -142,14 +142,23 @@ In a **new terminal window/tab**:
 ### Step 4: Verify Localhost Operation
 
 1. Open your browser and navigate to **`http://localhost:5173`**.
-2. **Ingest a Repository**:
-   - Ingest the bundled test suite by choosing **Local Workspace** / `sample-repo` or paste any GitHub public/private repository URL.
-3. **Execute Flaky Test Detection**:
-   - Run 5 to 10 automated test executions.
-4. **Inspect Subagent Classification**:
-   - View the AST-level diagnosis (e.g. race conditions in `test_timing.py`, uncleaned state in `test_leak.py`).
-5. **Generate & Apply Remediation**:
-   - Review the generated diff patches and click **Apply Fix** to quarantine or heal the flaky test suite.
+2. **Ingest a Test Suite (Choose Either Method)**:
+   - **Option A — 🐙 GitHub Repository (Cloud Scan)**:
+     - Stay on the **GitHub Repository** tab.
+     - Enter any target repository (e.g. `aditya-padmar/FlakeGuard` or your repo).
+     - Select branch (e.g. `main` or `frontend`) and choose Public or Private (with optional GitHub Personal Access Token).
+     - Adjust execution passes (e.g. `5 runs`) and click **🚀 Clone & Analyze with Bob Agent**.
+   - **Option B — 📁 Upload Test Suite (Local Archive / File Scan)**:
+     - Switch to the **Upload Test Suite** tab.
+     - Drag & drop a `.zip` archive of your test suite (for example, right-click and zip the included `sample-repo` directory into `sample-repo.zip`) or upload individual `.py` test files directly.
+     - Adjust execution passes (e.g. `5 runs`) and click **⚡ Unpack & Run Bob Analysis**.
+3. **Inspect Subagent Classification & Diagnostics**:
+   - As the test matrix executes, FlakeGuard identifies non-deterministic tests with variance scoring.
+   - Click on any detected flaky test to view the root-cause diagnosis from the 4 IBM Bob subagents (Timing Drift, Concurrency Races, State Leakage, Order Dependency).
+4. **Generate & Apply Remediation**:
+   - Review the auto-generated code diff patch.
+   - Click **Apply Fix** to patch source code, or click **Quarantine Test** to isolate the unstable test so CI builds remain green.
+   - Navigate to the **Audit & Metrics** tab to review test health trends, quarantine statuses, and CI logs.
 
 ---
 
