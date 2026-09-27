@@ -92,8 +92,9 @@ cd FlakeGuard
    source venv/bin/activate
    ```
 
-2. **Install backend dependencies**:
+2. **Navigate to folder and Install backend dependencies**:
    ```bash
+   cd FlakeGuard
    pip install -r requirements.txt
    ```
 
