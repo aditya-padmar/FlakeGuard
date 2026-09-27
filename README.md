@@ -198,13 +198,13 @@ FlakeGuard/
 
 FlakeGuard was designed, developed, and optimized using the **IBM Bob AI Assistant**. Per the IBM Watsonx Hackathon eligibility requirements (Rule 2), verified session summary screenshots and autonomous logs are documented in [`bob_sessions/`](bob_sessions/):
 
-| Team Member | Primary Roles & Responsibilities | Key Bob Tasks & Milestones | Bobcoins Used |
+| Team Member | Primary Roles & Responsibilities | Key Bob Tasks & Milestones
 | :--- | :--- | :--- | :---: |
-| **Aditya** | System Architect & Integration Lead | Bob IDE Enterprise configuration, budget management, API bridging |
-| **Ajay** | Remediation & Evidence Engine | F2 evidence validator, state leakage logic, polyglot audit fixes (20 files) |
-| **Akash** | Fullstack & Sync Lead | Frontend/backend route integration, branch synchronization, bug fixes (10 files) |
-| **Jostan** | Ingestion & Harness Lead | Archive zip upload validation, git scanning service, remediation route verification |
-| **Nikhil** | Environment & Documentation Lead | Dependency environments, main branch merges, presentation prompt formulation |
+| **Aditya** | System Architect & Integration Lead | Bob IDE Enterprise configuration, budget management, API bridging
+| **Ajay** | Remediation & Evidence Engine | F2 evidence validator, state leakage logic, polyglot audit fixes (20 files)
+| **Akash** | Fullstack & Sync Lead | Frontend/backend route integration, branch synchronization, bug fixes (10 files) 
+| **Jostan** | Ingestion & Harness Lead | Archive zip upload validation, git scanning service, remediation route verification
+| **Nikhil** | Environment & Documentation Lead | Dependency environments, main branch merges, presentation prompt formulation
 
 👉 **Full catalog, token context lengths, and task IDs are documented in [`bob_sessions/README.md`](bob_sessions/README.md)**.
 
