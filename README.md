@@ -200,11 +200,11 @@ FlakeGuard was designed, developed, and optimized using the **IBM Bob AI Assista
 
 | Team Member | Primary Roles & Responsibilities | Key Bob Tasks & Milestones | Bobcoins Used |
 | :--- | :--- | :--- | :---: |
-| **Aditya** | System Architect & Integration Lead | Bob IDE Enterprise configuration, budget management, API bridging | 2.44 |
-| **Ajay** | Remediation & Evidence Engine | F2 evidence validator, state leakage logic, polyglot audit fixes (20 files) | 39.81 |
-| **Akash** | Fullstack & Sync Lead | Frontend/backend route integration, branch synchronization, bug fixes (10 files) | 38.94 |
-| **Jostan** | Ingestion & Harness Lead | Archive zip upload validation, git scanning service, remediation route verification | 12.50 |
-| **Nikhil** | Environment & Documentation Lead | Dependency environments, main branch merges, presentation prompt formulation | 19.42 |
+| **Aditya** | System Architect & Integration Lead | Bob IDE Enterprise configuration, budget management, API bridging |
+| **Ajay** | Remediation & Evidence Engine | F2 evidence validator, state leakage logic, polyglot audit fixes (20 files) |
+| **Akash** | Fullstack & Sync Lead | Frontend/backend route integration, branch synchronization, bug fixes (10 files) |
+| **Jostan** | Ingestion & Harness Lead | Archive zip upload validation, git scanning service, remediation route verification |
+| **Nikhil** | Environment & Documentation Lead | Dependency environments, main branch merges, presentation prompt formulation |
 
 👉 **Full catalog, token context lengths, and task IDs are documented in [`bob_sessions/README.md`](bob_sessions/README.md)**.
 
