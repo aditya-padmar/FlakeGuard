@@ -1,3 +1,71 @@
+# ============================================
+# WATSONX HACKATHON - SECURITY .GITIGNORE
+# ============================================
+# DO NOT REMOVE OR MODIFY SECURITY PATTERNS
+# ============================================
+
+# ============================================
+# AI ASSISTANT SESSION FILES (CRITICAL)
+# ============================================
+# NOTE: bob_sessions/ folder is REQUIRED for project submission
+# Live session files are excluded, but exported reports must be included
+.copilot/
+.cursor/
+.codeium/
+
+# ============================================
+# CREDENTIALS AND SECRETS (CRITICAL)
+# ============================================
+
+# Environment files
+.env
+.env.*
+!.env.example
+*.env
+env.local
+.env.local
+.env.*.local
+
+# IBM Cloud credentials
+ibmcloud-credentials.json
+ibm-credentials.env
+*-credentials.json
+*apikey*
+*api-key*
+*api_key*
+
+# Configuration files with credentials
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+id_rsa
+id_dsa
+*.ppk
+
+# Generic credential patterns
+*credentials*
+*secret*
+*password*
+
+# Database credentials
+database.yml
+database.json
+db-config.*
+
+# ============================================
+# FLAKEGUARD DEVELOPMENT & RUNTIME FILES
+# ============================================
+
 # Python
 __pycache__/
 *.py[cod]
@@ -27,49 +95,42 @@ venv/
 env/
 ENV/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Environment
-.env
-
 # Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.npm
 
 # Build
 frontend/dist/
 frontend/build/
 
-# Data
+# Data & Cache
 data/runs/*.json
 data/classifications/*.json
 data/fixes/*.json
 data/metrics/*.json
+data/*.json
+data/repos/
+data/uploads/
 
 # Logs
 *.log
 logs/
 
-# OS
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
-
-# IDE & Local Tooling
 .codex/
-data/*.json
-data/repos/
-data/uploads/
 
 # FlakeGuard runtime artifacts
 sample-repo/.temp_results_*.json
 sample-repo/.test_report.json
 sample-repo/.flakeguard_state/
 vs_buildtools.exe
-
