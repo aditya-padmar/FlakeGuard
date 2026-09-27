@@ -1,57 +1,225 @@
-# FlakeGuard
+# 🛡️ FlakeGuard
 
-AI-powered flaky test detection, classification, and remediation system.
+> **Autonomous AI-Powered Flaky Test Detection, Root-Cause Classification & Automated Remediation**  
+> *Engineered with IBM Bob AI Assistant for the Watsonx Hackathon*
 
-## Overview
+---
 
-FlakeGuard helps development teams identify, classify, and fix flaky tests automatically. It uses AI agents to analyze test failures and provide actionable remediation suggestions.
+## 📌 Executive Summary
 
-## Features
+Flaky tests are one of the costliest bottlenecks in modern continuous integration pipelines—wasting thousands of developer hours, delaying pull request merges, and eroding confidence in automated test suites. 
 
-- **Test Detection**: Identifies flaky tests across multiple runs
-- **Root Cause Classification**: Classifies failures by type (timing, ordering, leakage, environment)
-- **Automated Remediation**: Generates fix suggestions and code diffs
-- **Quarantine Management**: Tracks quarantined tests and their status
-- **Metrics Dashboard**: Visualize flaky test trends and remediation progress
+**FlakeGuard** is an end-to-end, multi-agent AI system that:
+1. **Detects** non-deterministic test failures across repeated execution matrices with adaptive statistical variance scoring.
+2. **Diagnoses** root causes via specialized IBM Bob AST subagents (Timing Drift, Concurrency Races, Order Dependencies, State Leakage, and Async I/O deadlines).
+3. **Remediates** source code by automatically generating targeted AST diff patches, validated against live test harnesses.
+4. **Quarantines & Tracks** unstable tests with automated CI lifecycles, health scores, and metrics dashboards.
 
-## Project Structure
+---
 
-- `backend/` - Python FastAPI backend with AI agents
-- `frontend/` - React TypeScript dashboard
-- `sample-repo/` - Example repository with flaky tests for testing
-- `data/` - Storage for runs, classifications, fixes, and metrics
-- `scripts/` - Utility scripts for running detection and pipelines
-- `docs/` - Documentation and architecture guides
+## 🏛️ System Architecture
 
-## Quick Start
+FlakeGuard is organized into 4 autonomous backend services orchestrated by FastAPI and integrated with an enterprise React TypeScript dashboard:
 
-1. Install backend dependencies:
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   FlakeGuard System                                    │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│   ┌────────────────────────┐      ┌────────────────────────┐      ┌─────────────────┐  │
+│   │   Frontend Dashboard   │      │    FastAPI Backend     │      │   IBM Bob AI    │  │
+│   │   (React + TypeScript) │────▶ │     (Port 8000)        │◀────▶│  Subagents      │  │
+│   └────────────────────────┘      └────────────────────────┘      └─────────────────┘  │
+│                                                │                                       │
+│                ┌───────────────────────────────┼───────────────────────────────┐       │
+│                ▼                               ▼                               ▼       │
+│     ┌─────────────────────┐         ┌─────────────────────┐         ┌───────────────┐  │
+│     │ F1: Test Harness    │         │ F2: Bob Classifier  │         │ F3: Remedy    │  │
+│     │ • Multi-run matrix  │         │ • Timing & Races    │         │ • AST Patcher │  │
+│     │ • Git repo ingest   │         │ • Order Dependency  │         │ • Patch Diffs │  │
+│     │ • Pytest / Polyglot │         │ • State Leakage     │         │ • Evidence    │  │
+│     └─────────────────────┘         └─────────────────────┘         └───────────────┘  │
+│                                                │                                       │
+│                                                ▼                                       │
+│                                     ┌─────────────────────┐                            │
+│                                     │ F4: Polyglot Auditor│                            │
+│                                     │ • CI Log Parser     │                            │
+│                                     │ • Quarantine Engine │                            │
+│                                     │ • Health Metrics    │                            │
+│                                     └─────────────────────┘                            │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Quick Start Guide (Localhost Setup)
+
+Follow these step-by-step instructions to clone, configure, and launch FlakeGuard locally.
+
+### 📋 Prerequisites
+
+Ensure you have the following installed on your machine:
+- **Git**: [Download Git](https://git-scm.com/)
+- **Python**: `3.10+` (tested on 3.10, 3.11, 3.12, 3.14) — [Download Python](https://www.python.org/)
+- **Node.js**: `18.0+` & **npm**: `9.0+` — [Download Node.js](https://nodejs.org/)
+
+---
+
+### Step 1: Clone the Repository
+
+Open your terminal or PowerShell and clone the official repository:
+
+```bash
+git clone https://github.com/aditya-padmar/FlakeGuard.git
+cd FlakeGuard
+```
+
+---
+
+### Step 2: Backend Setup (FastAPI & AI Engine)
+
+1. **Create and activate a virtual environment**:
+
+   **Windows (PowerShell):**
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+
+   **macOS / Linux:**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+2. **Install backend dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-2. Install frontend dependencies:
+3. **Configure environment variables**:
    ```bash
-   cd frontend
-   npm install
-   ```
-
-3. Configure environment:
-   ```bash
+   # On macOS / Linux:
    cp .env.example .env
-   ```
 
-4. Run the backend:
+   # On Windows (PowerShell):
+   Copy-Item .env.example .env
+   ```
+   *(Edit `.env` to configure optional custom API keys or ports; defaults work out of the box for local testing).*
+
+4. **Start the FastAPI Backend Server**:
    ```bash
    python backend/main.py
    ```
+   - **Backend API**: `http://localhost:8000`
+   - **Interactive API Docs (Swagger UI)**: `http://localhost:8000/docs`
+   - **Alternative Docs (ReDoc)**: `http://localhost:8000/redoc`
 
-5. Run the frontend:
+---
+
+### Step 3: Frontend Setup (React Dashboard)
+
+In a **new terminal window/tab**:
+
+1. **Navigate to the frontend directory**:
    ```bash
-   cd frontend
-   npm run dev
+   cd FlakeGuard/frontend
    ```
 
-## Documentation
+2. **Install frontend dependencies**:
+   ```bash
+   npm install
+   ```
 
-See `docs/architecture.md` for system architecture and `docs/api.md` for API documentation.
+3. **Start the Vite development server**:
+   ```bash
+   npm run dev
+   ```
+   - **Web Application**: `http://localhost:5173`
+
+---
+
+### Step 4: Verify Localhost Operation
+
+1. Open your browser and navigate to **`http://localhost:5173`**.
+2. **Ingest a Repository**:
+   - Ingest the bundled test suite by choosing **Local Workspace** / `sample-repo` or paste any GitHub public/private repository URL.
+3. **Execute Flaky Test Detection**:
+   - Run 5 to 10 automated test executions.
+4. **Inspect Subagent Classification**:
+   - View the AST-level diagnosis (e.g. race conditions in `test_timing.py`, uncleaned state in `test_leak.py`).
+5. **Generate & Apply Remediation**:
+   - Review the generated diff patches and click **Apply Fix** to quarantine or heal the flaky test suite.
+
+---
+
+## 📂 Project Structure
+
+```
+FlakeGuard/
+├── bob_sessions/          # Official IBM Bob session screenshots, token metrics, and logs
+│   ├── README.md          # Index of team member tasks, tokens, and Bobcoins spent
+│   ├── SESSION_LOG.md     # Subagent diagnostic execution verdicts & logs
+│   └── *.png              # 10 verified Bob IDE task summary screenshots
+├── backend/               # FastAPI backend and AI microservices
+│   ├── api/routes/        # REST endpoints (detection, classification, remediation, audit)
+│   ├── auditor/           # Polyglot CI log parsing and quarantine lifecycle
+│   ├── bob/               # IBM Bob subagents (Timing, Leakage, Concurrency, Order)
+│   ├── harness/           # Multi-run test matrix execution engine and git clone bridge
+│   ├── models/            # Pydantic schemas and domain models
+│   ├── remediation/       # AST diff generator, strategy selector, evidence validator
+│   └── main.py            # Application entrypoint (port 8000)
+├── frontend/              # Modern React + TypeScript SPA
+│   ├── src/components/    # Ingestion, Dashboard, Classification, Quarantine, and Remediation views
+│   ├── src/services/      # Typed API client with auto-fallback and health check
+│   └── vite.config.ts     # Vite build and proxy configuration
+├── sample-repo/           # Reference repository with reproducible flaky test patterns
+├── data/                  # Storage for run histories, classifications, and metrics
+├── docs/                  # In-depth architectural guides and API documentation
+├── .bobignore             # Security filter preventing credential leaks to AI assistants
+├── SECURITY.MD            # Watsonx Hackathon security compliance guide
+├── requirements.txt       # Python backend dependencies
+└── package.json           # Frontend dependency manifest
+```
+
+---
+
+## 🤖 IBM Bob AI Assistant Sessions & Eligibility Evidence
+
+FlakeGuard was designed, developed, and optimized using the **IBM Bob AI Assistant**. Per the IBM Watsonx Hackathon eligibility requirements (Rule 2), verified session summary screenshots and autonomous logs are documented in [`bob_sessions/`](bob_sessions/):
+
+| Team Member | Primary Roles & Responsibilities | Key Bob Tasks & Milestones | Bobcoins Used |
+| :--- | :--- | :--- | :---: |
+| **Aditya** | System Architect & Integration Lead | Bob IDE Enterprise configuration, budget management, API bridging | 2.44 |
+| **Ajay** | Remediation & Evidence Engine | F2 evidence validator, state leakage logic, polyglot audit fixes (20 files) | 39.81 |
+| **Akash** | Fullstack & Sync Lead | Frontend/backend route integration, branch synchronization, bug fixes (10 files) | 38.94 |
+| **Jostan** | Ingestion & Harness Lead | Archive zip upload validation, git scanning service, remediation route verification | 12.50 |
+| **Nikhil** | Environment & Documentation Lead | Dependency environments, main branch merges, presentation prompt formulation | 19.42 |
+
+👉 **Full catalog, token context lengths, and task IDs are documented in [`bob_sessions/README.md`](bob_sessions/README.md)**.
+
+---
+
+## 🔒 Security & Compliance
+
+FlakeGuard adheres strictly to the IBM Watsonx Hackathon security guidelines:
+- **Zero Exposed Credentials**: Protected by [`.bobignore`](.bobignore) and [`.gitignore`](.gitignore).
+- **Environment Isolation**: Private personal access tokens and keys are never hardcoded or sent across public routes.
+- **Security Guide**: Review [`SECURITY.MD`](SECURITY.MD) for full compliance instructions.
+
+---
+
+## 👥 FlakeGuard Team
+
+Developed with ❤️ for the **IBM Watsonx Hackathon** by:
+- **Aditya**
+- **Ajay**
+- **Akash**
+- **Jostan**
+- **Nikhil**
+
+---
+
+## 📄 License & Attribution
+
+This project is licensed under the MIT License. Developed in conjunction with the IBM Bob AI Assistant platform.
