@@ -210,8 +210,6 @@ FlakeGuard adheres strictly to the IBM Watsonx Hackathon security guidelines:
 ---
 
 ## 👥 FlakeGuard Team
-
-Developed with ❤️ for the **IBM Watsonx Hackathon** by:
 - **Aditya**
 - **Ajay**
 - **Akash**
